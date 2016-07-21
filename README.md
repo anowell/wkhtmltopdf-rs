@@ -1,6 +1,18 @@
 # wkhtmltopdf-rs
 High-level Rust bindings for wkhtmltopdf. This is a wrapper around the low-level binding provided by [libwkhtmltox-sys](https://github.com/anowell/libwkhtmltox-sys).
 
+## Install
+
+Install wkhtmltopdf 0.12.3 libs.
+
+Arch: `pacman -S wkhtmltopdf`
+
+TODO: add install for more common platforms.
+
+Manually:
+- Download [wkhtmltopdf 0.12.3](http://wkhtmltopdf.org/downloads.html)
+- Install libraries (libwkhtmltox.so.0.12.3 and symlinks) into system libraries or use `LD_LIBRARY_PATH` when running your app
+
 ## WIP
 
 This is a work-in-progress. It is kinda, sorta able to generate PDFs from HTML*. It currently works like this:
