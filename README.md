@@ -5,11 +5,15 @@ High-level Rust bindings for wkhtmltopdf. This is a wrapper around the low-level
 
 Install wkhtmltopdf 0.12.3 libs.
 
-Arch: `pacman -S wkhtmltopdf`
+**Arch Linux:**
+
+```
+pacman -S wkhtmltopdf
+```
 
 TODO: add install for more common platforms.
 
-Manually:
+**Manually:**
 - Download [wkhtmltopdf 0.12.3](http://wkhtmltopdf.org/downloads.html)
 - Install libraries (libwkhtmltox.so.0.12.3 and symlinks) into system libraries or use `LD_LIBRARY_PATH` when running your app
 
