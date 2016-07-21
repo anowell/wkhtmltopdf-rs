@@ -1,5 +1,5 @@
 # wkhtmltopdf-rs
-High-level Rust bindings for wkhtmltopdf
+High-level Rust bindings for wkhtmltopdf. This is a wrapper around the low-level binding provided by [libwkhtmltox-sys](https://github.com/anowell/libwkhtmltox-sys).
 
 ## WIP
 
