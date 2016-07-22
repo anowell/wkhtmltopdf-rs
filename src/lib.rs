@@ -5,7 +5,7 @@ extern crate url;
 extern crate lazy_static;
 
 use std::sync::Mutex;
-use libwkhtmltox::*;
+use libwkhtmltox::pdf::*;
 use std::ffi::{CString, CStr};
 use std::os::raw::{c_char, c_int, c_uchar};
 use std::path::{Path, PathBuf};
