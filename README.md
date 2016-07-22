@@ -43,12 +43,11 @@ This is a work-in-progress. It is kinda, sorta able to generate PDFs from HTML*.
 
 
 TODO:
-- [ ] Resolve soundess issues - `wkhtmltopdf_get_output` segfaults, but hacked around with weird sleep in debug mode 
 - [ ] Error cleanup
 - [ ] Support more settings, figure out why some flags don't work (like 'outlineDepth')
 - [ ] Tests
 - [ ] Other input sources: `Url`, `Path`, `impl Read`
 - [ ] Better examples
-- [ ] Consider extending for WkHtml
+- [ ] Consider extending for WkHtmlToImage
 
 **Contributions welcome in the form of issue reports, feature requests, feed, and/or pull request.**

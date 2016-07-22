@@ -1,9 +1,9 @@
 extern crate wkhtmltopdf;
 extern crate url;
+
 use wkhtmltopdf::*;
 use std::fs::File;
 use std::io::Write;
-use url::Url;
 
 fn main() {
   let html = r#"

@@ -7,12 +7,10 @@ extern crate lazy_static;
 use std::sync::Mutex;
 use libwkhtmltox::pdf::*;
 use std::ffi::{CString, CStr};
-use std::os::raw::{c_char, c_int, c_uchar};
+use std::os::raw::{c_char, c_int};
 use std::path::{Path, PathBuf};
 use std::fs::File;
-use std::io::Read;
 use url::Url;
-use std::fmt;
 use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver};
 use std::borrow::Cow;
@@ -129,7 +127,7 @@ impl PdfSettings {
         match self.page_size {
             PageSize::Custom(ref w, ref h) => {
                 settings.insert("size.width", w.value());
-                settings.insert("size.height", w.value());
+                settings.insert("size.height", h.value());
             },
             _ => {
                 settings.insert("size.pageSize", self.page_size.value());
@@ -271,7 +269,7 @@ impl PdfGlobal {
             .map_err(|err| format!("encountered null byte in 'name'- {}", err)));
         let c_value = try!(CString::new(value)
             .map_err(|err| format!("encountered null byte in 'value'- {}", err)));
-        match unsafe { wkhtmltopdf_set_global_setting(self.global_settings, c_name.as_ptr(), c_value.as_ptr()) } {
+        match wkhtmltopdf_set_global_setting(self.global_settings, c_name.as_ptr(), c_value.as_ptr()) {
             0 => Err(format!("failed to set '{}' to '{}'", name, value)),
             1 => Ok(()),
             _ => unreachable!("wkhtmltopdf_set_global_setting returned invalid value"),
@@ -326,68 +324,64 @@ impl PdfConverter {
         };
     }
 
-    // pub fn monitor(&self) {
+    // enum PdfEvent(Finished(bool), Error(msg), Warning(msg), Progress(percent), PhaseChange(id, name))
+    // pub fn on_event(&self, Fn(event: PdfEvent...) -> {
+
         // unsafe {
         //     wkhtmltopdf_set_progress_changed_callback(converter, Some(int_callback));
         //     wkhtmltopdf_set_warning_callback(converter, Some(str_callback));
         //     wkhtmltopdf_set_phase_changed_callback(converter, Some(void_callback));
         // };
+
     // }
 
     // blocks until complete (or error)
-
     pub unsafe fn convert(self) -> Result<Vec<u8>> {
         let rx = self.setup_callbacks();
 
         let success = wkhtmltopdf_convert(self.converter) == 1;
 
-        if success {
+        let result = if success {
+            let mut buf_ptr = std::ptr::null();
+            let bytes = wkhtmltopdf_get_output(self.converter, &mut buf_ptr) as usize;
+            let buf_slice = std::slice::from_raw_parts(buf_ptr, bytes);
+            Ok(buf_slice.to_vec())
+        } else {
             match rx.recv().expect("sender disconnected") {
-                Ok(_) => {
-                    // TODO: for some strange reason, this sleep prevents segfault in debug mode
-                    //   the sleep has to happen before mem::uninitialized
-                    //   otherwise wkhtmltopdf_get_output segfaults.
-                    //   release mode is less predictable.
-                    // Very probably this code is sound yet,
-                    //   but it's also possible wkhtmltopdf has a data race
-                    std::thread::sleep(std::time::Duration::from_millis(100));
-
-                    let buf_ptr: *mut *const c_uchar = std::mem::uninitialized();
-                    let bytes = wkhtmltopdf_get_output(self.converter, buf_ptr) as usize;
-                    let buf_slice = std::slice::from_raw_parts(*buf_ptr as *const c_uchar, bytes);
-                    Ok(buf_slice.to_vec())
-                },
+                Ok(_) => unreachable!(),
                 Err(err) => {
                     Err(format!("wkhtmltopdf_convert failed: {}", err))
                 }
             }
-        } else {
-            Err("wkhtmltopdf_convert".to_string())
-        }
+        };
+
+        self.remove_callbacks();
+        result
+    }
+
+    fn remove_callbacks(&self) {
+        let id = self.converter as usize;
+
+        let _ = ERROR_CALLBACKS.lock().unwrap().remove(&id);
+        let _ = FINISHED_CALLBACKS.lock().unwrap().remove(&id);
     }
 
     fn setup_callbacks(&self) -> Receiver<Result<()>> {
-        unsafe {
-            wkhtmltopdf_set_finished_callback(self.converter, Some(finished_callback));
-            wkhtmltopdf_set_error_callback(self.converter, Some(error_callback));
-        }
-
         let (tx, rx) = mpsc::channel();
         let errors = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
 
         let tx_finished = tx.clone();
         let errors_finished = errors.clone();
         let on_finished = move |i| {
-            let mut errors = errors_finished.lock().unwrap();
+            let errors = errors_finished.lock().unwrap();
 
             let msg = match i {
                 1 => Ok(()),
-                _ => Err(format!("Finished with errors: {}", errors.join(", "))),
+                _ => Err(errors.join(", ")),
             };
             let _ = tx_finished.send(msg);
         };
 
-        let tx_error = tx.clone();
         let on_error = move |err| {
             let mut errors = errors.lock().unwrap();
             errors.push(err);
@@ -400,6 +394,11 @@ impl PdfConverter {
             finished_callbacks.insert(id, Box::new(on_finished));
             let mut error_callbacks = ERROR_CALLBACKS.lock().unwrap();
             error_callbacks.insert(id, Box::new(on_error));
+        }
+
+        unsafe {
+            wkhtmltopdf_set_finished_callback(self.converter, Some(finished_callback));
+            wkhtmltopdf_set_error_callback(self.converter, Some(error_callback));
         }
 
         rx
@@ -429,7 +428,7 @@ impl PdfObject {
             .map_err(|err| format!("encountered null byte in 'name'- {}", err)));
         let c_value = try!(CString::new(value)
             .map_err(|err| format!("encountered null byte in 'value'- {}", err)));
-        match unsafe { wkhtmltopdf_set_object_setting(self.object_settings, c_name.as_ptr(), c_value.as_ptr()) } {
+        match wkhtmltopdf_set_object_setting(self.object_settings, c_name.as_ptr(), c_value.as_ptr()) {
             0 => Err(format!("failed to set '{}' to '{}'", name, value)),
             1 => Ok(()),
             _ => unreachable!("wkhtmltopdf_set_object_setting returned invalid value"),
@@ -449,11 +448,6 @@ unsafe extern fn finished_callback(converter: *mut wkhtmltopdf_converter, val: c
         if let Some(mut cb) = callbacks.remove(&id) {
             cb(val as i32);
         }
-    }
-    {
-        // remove this converter's ERROR_CALLBACK
-        let mut callbacks = ERROR_CALLBACKS.lock().unwrap();
-        let _ = callbacks.remove(&id);
     }
 }
 
@@ -475,7 +469,7 @@ mod tests {
     fn it_works() {
         let res = PdfBuilder::from_html("foo").build();
         assert_eq!(res.is_ok(), true);
-        assert_eq!(res.unwrap().len(), 3124);
+        assert_eq!(res.unwrap().len(), 3130);
     }
 }
 
