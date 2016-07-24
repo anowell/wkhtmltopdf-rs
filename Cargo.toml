@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["Anthony Nowell <anowell@gmail.com>"]
 
 [dependencies]
-libwkhtmltox-sys = { git = "https://github.com/anowell/libwkhtmltox-sys.git" }
+wkhtmltox-sys = "0.1.0"
 url = "1.1.1"
 lazy_static = "0.2.1"

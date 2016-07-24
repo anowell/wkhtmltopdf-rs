@@ -5,25 +5,19 @@ High-level Rust bindings for wkhtmltopdf. This is a wrapper around the low-level
 
 Install wkhtmltopdf 0.12.3 libs.
 
-**Arch Linux:**
-
-```
-pacman -S wkhtmltopdf
-```
-
-TODO: add install for more common platforms.
-
 **Manually:**
 - Download [wkhtmltopdf 0.12.3](http://wkhtmltopdf.org/downloads.html)
-- Install libraries (libwkhtmltox.so.0.12.3 and symlinks) into system libraries or use `LD_LIBRARY_PATH` when running your app
+- Install libraries and includes
 
-## WIP
+TODO: Add platform-relevant instructions
 
-This is a work-in-progress. It is kinda, sorta able to generate PDFs from HTML*. It currently works like this:
+## Usage
+
+This is a work-in-progress, but basic functionality should be working:
 
 ```rust
   let html = r#"<html><body><div>foo</div></body></html>"#.to_string();
-  let res = PdfBuilder::from_html(html)
+  let mut pdf = PdfBuilder::from_html(html)
     .configure(PdfSettings {
       orientation: Orientation::Landscape,
       margin: Margin::all(Size::Inches(2)),
@@ -34,20 +28,15 @@ This is a work-in-progress. It is kinda, sorta able to generate PDFs from HTML*.
     .expect("failed to build pdf");
 
   let mut file = File::create("foo.pdf").expect("failed to create foo.pdf");
-  println!("writing {} bytes to file: foo.pdf", res.len());
-  file.write_all(&res).expect("failed to write to foo.pdf");
+  let bytes = std::io::copy(&mut pdf, &mut file).expect("failed to write to foo.pdf");
+  println!("wrote {} bytes to file: foo.pdf", bytes);
 ```
-
-&ast; most of the time, in debug mode, at least on my laptop (see first TODO item)
-
-
 
 TODO:
 - [ ] Error cleanup
 - [ ] Support more settings, figure out why some flags don't work (like 'outlineDepth')
-- [ ] Tests
+- [ ] Tests and better examples
 - [ ] Other input sources: `Url`, `Path`, `impl Read`
-- [ ] Better examples
 - [ ] Consider extending for WkHtmlToImage
 
 **Contributions welcome in the form of issue reports, feature requests, feed, and/or pull request.**
