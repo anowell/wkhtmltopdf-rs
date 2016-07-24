@@ -189,13 +189,14 @@ pub struct PdfObject {
     needs_delete: bool,
 }
 
-pub struct PdfConverter{
+pub struct PdfConverter {
     converter: *mut wkhtmltopdf_converter,
     _global: PdfGlobal, // just to control the drop sequence because PdfGlobal::drop also manages wkhtmktopdf_deinit
 }
 
 pub struct PdfOutput<'a> {
     data: &'a [u8],
+    _converter: PdfConverter, // Don't drop the converter until data lifetime ends
 }
 
 
@@ -331,7 +332,7 @@ impl PdfConverter {
             let mut buf_ptr = std::ptr::null();
             let bytes = wkhtmltopdf_get_output(self.converter, &mut buf_ptr) as usize;
             let pdf_slice = std::slice::from_raw_parts(buf_ptr, bytes);
-            Ok(PdfOutput{ data: pdf_slice, /*_converter: self*/ })
+            Ok(PdfOutput{ data: pdf_slice, _converter: self })
         } else {
             match rx.recv().expect("sender disconnected") {
                 Ok(_) => unreachable!(),
