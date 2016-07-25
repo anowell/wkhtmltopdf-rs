@@ -1,6 +1,8 @@
 # wkhtmltopdf-rs
 High-level Rust bindings for wkhtmltopdf. This is a wrapper around the low-level binding provided by [libwkhtmltox-sys](https://github.com/anowell/libwkhtmltox-sys).
 
+[Documentation](https://anowell.github.io/wkhtmltopdf-rs/wkhtmltopdf/)
+
 ## Install
 
 Install wkhtmltopdf 0.12.3 libs.
@@ -17,19 +19,15 @@ This is a work-in-progress, but basic functionality should be working:
 
 ```rust
   let html = r#"<html><body><div>foo</div></body></html>"#.to_string();
-  let mut pdf = PdfBuilder::from_html(html)
-    .configure(PdfSettings {
-      orientation: Orientation::Landscape,
-      margin: Margin::all(Size::Inches(2)),
-      title: Some("Awesome Foo".into()),
-      .. Default::default()
-    })
-    .build()
-    .expect("failed to build pdf");
+  let mut pdfout = PdfBuilder::new()
+      .orientation(Orientation::Landscape)
+      .margin(Size::Inches(2))
+      .title("Awesome Foo")
+      .build_from_html(&html)
+      .expect("failed to build pdf");
 
-  let mut file = File::create("foo.pdf").expect("failed to create foo.pdf");
-  let bytes = std::io::copy(&mut pdf, &mut file).expect("failed to write to foo.pdf");
-  println!("wrote {} bytes to file: foo.pdf", bytes);
+  pdfout.save("foo.pdf").expect("failed to save foo.pdf");
+  println!("save generated PDF as: foo.pdf");
 ```
 
 TODO:
