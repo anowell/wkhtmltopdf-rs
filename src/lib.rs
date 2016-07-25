@@ -4,30 +4,28 @@ extern crate url;
 #[macro_use]
 extern crate lazy_static;
 
-use std::sync::Mutex;
-use wkhtmltox_sys::pdf::*;
-use std::ffi::{CString, CStr};
-use std::os::raw::{c_char, c_int};
-use std::path::{Path, PathBuf};
+pub mod lowlevel;
+
+use std::path::Path;
 use url::Url;
-use std::io::Read;
+use std::io::{self, Read};
 use std::collections::HashMap;
-use std::sync::mpsc::{self, Receiver};
 use std::borrow::Cow;
-
-lazy_static! {
-    // Globally count wkhtmltopdf handles so we can safely init/deinit the underlying wkhtmltopdf singleton
-    static ref WKHTMLTOPDF_GLOBAL_COUNT: Mutex<u32> = Mutex::new(0);
-
-    // Globally track callbacks since wkhtmltopdf doesn't allow injecting any userdata
-    // The HashMap key is the converter's raw pointer cast as usize, so we can have unique callbacks per converter
-    static ref FINISHED_CALLBACKS: Mutex<HashMap<usize, Box<FnMut(i32) + 'static + Send>>> = Mutex::new(HashMap::new());
-    static ref ERROR_CALLBACKS: Mutex<HashMap<usize, Box<FnMut(String) + 'static + Send>>> = Mutex::new(HashMap::new());
-    // TODO: 3 more callback types
-}
+use std::fs::File;
+use lowlevel::*;
 
 pub type Result<T> = std::result::Result<T, String>; // TODO: better error type than String
 
+/// Generated PDF output
+pub struct PdfOutput<'a> {
+    // slice of the data owned by the wkhtmltopdf_converter
+    data: &'a [u8],
+    // Don't drop the converter until data lifetime ends
+    _converter: PdfConverter,
+}
+
+/// Physical size of the paper
+#[derive(Debug)]
 pub enum PageSize {
     A1, A2, A3, A4, A5, A6, A7, A8, A9,
     B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10,
@@ -53,408 +51,216 @@ impl PageSize {
     }
 }
 
-#[derive(Clone)]
+/// Unit-aware sizes
+#[derive(Debug, Clone)]
 pub enum Size { Millimeters(u32), Inches(u32) }
 impl Size {
-    fn value(&self) -> Cow<'static, str> {
+    fn value(&self) -> String {
         match self {
             &Size::Millimeters(ref n) => format!("{}mm", n),
             &Size::Inches(ref n) => format!("{}in", n),
-        }.into()
-    }
-}
-
-pub enum Orientation { Landscape, Portrait }
-impl Orientation {
-    fn value(&self) -> Cow<'static, str> {
-        match self {
-            &Orientation::Landscape => "Landscape".into(),
-            &Orientation::Portrait => "Portrait".into(),
         }
     }
 }
+
+/// PDF Orientation
+#[derive(Debug)]
+pub enum Orientation { Landscape, Portrait }
+
+/// PDF Margins
+#[derive(Debug)]
 pub struct Margin {
     pub top: Size,
     pub bottom: Size,
     pub left: Size,
     pub right: Size,
 }
-impl Margin {
-    pub fn all(size: Size) -> Margin {
+
+impl From<Size> for Margin {
+    /// Performs the conversion using `size` for all margins
+    fn from(size: Size) -> Margin {
         Margin{ top: size.clone(), bottom: size.clone(), left: size.clone(), right: size.clone() }
     }
 }
 
-pub struct PdfSettings {
-    /// The paper size of the output document (default A4)
-    pub page_size: PageSize,
-    /// The orientation of the output document (default portrait)
-    pub orientation: Orientation,
-    /// What dpi should we use when printin (default 72)
-    pub dpi: u32,
-    // /// The maximum depth of the outline (table of contents) to generate in the sidebar (default None)
-    // pub outline_depth: Option<u32>,
-    /// The title of the PDF document (default None)
-    pub title: Option<String>,
-    /// Size of the page margins (default 10mm on all sides)
-    pub margin: Margin,
-    /// JPEG image compression quality in percentage (default 94)
-    pub image_quality: u32,
-}
-
-type Setting = (&'static str, Cow<'static, str>);
-
-impl PdfSettings {
-    fn global_settings<'a>(&'a self) -> HashMap<&'static str, Cow<'a, str>> {
-        let mut settings = HashMap::new();
-
-        settings.insert("margin.top", self.margin.top.value());
-        settings.insert("margin.bottom", self.margin.bottom.value());
-        settings.insert("margin.left", self.margin.left.value());
-        settings.insert("margin.right", self.margin.right.value());
-        settings.insert("dpi", self.dpi.to_string().into());
-        settings.insert("orientation", self.orientation.value());
-        settings.insert("imageQuality", self.image_quality.to_string().into());
-
-        if let Some(ref title) = self.title {
-            settings.insert("documentTitle", Cow::Borrowed(title));
-        }
-        // if let Some(depth) = self.outline_depth {
-        //     settings.insert("outline", "true".into());
-        //     settings.insert("outlineDepth", depth.to_string().into());
-        // }
-
-        match self.page_size {
-            PageSize::Custom(ref w, ref h) => {
-                settings.insert("size.width", w.value());
-                settings.insert("size.height", h.value());
-            },
-            _ => {
-                settings.insert("size.pageSize", self.page_size.value());
-            }
-        };
-
-        settings
-    }
-    fn object_settings(&self) -> Vec<(&'static str, String)> {
-        vec![
-
-        ]
+impl From<(Size, Size)> for Margin {
+    /// Performs the converstion to margins from an ordered tuple representing: (top & bottom, left & right)
+    fn from(sizes: (Size, Size)) -> Margin {
+        Margin{ top: sizes.0.clone(), bottom: sizes.0.clone(), left: sizes.1.clone(), right: sizes.1.clone() }
     }
 }
 
-impl Default for PdfSettings {
-    fn default() -> Self {
-        PdfSettings {
-            page_size: PageSize::A4,
-            orientation: Orientation::Portrait,
-            dpi: 72,
-            // outline_depth: Some(4),
-            title: None,
-            image_quality: 94,
-            margin: Margin::default(),
-        }
+impl From<(Size, Size, Size)> for Margin {
+    /// Performs the converstion to margins from an ordered tuple representing: (top, left & right, bottom)
+    fn from(sizes: (Size, Size, Size)) -> Margin {
+        Margin{ top: sizes.0.clone(), bottom: sizes.2.clone(), left: sizes.1.clone(), right: sizes.1.clone() }
     }
 }
 
-impl Default for Margin {
-    fn default() -> Self {
-        Margin {
-            top: Size::Millimeters(10),
-            left: Size::Millimeters(10),
-            right: Size::Millimeters(10),
-            bottom: Size::Millimeters(10),
-        }
+impl From<(Size, Size, Size, Size)> for Margin {
+    /// Performs the converstion to margins from an ordered tuple representing: (top, right, bottom, left)
+    fn from(sizes: (Size, Size, Size, Size)) -> Margin {
+        Margin{ top: sizes.0.clone(), bottom: sizes.2.clone(), left: sizes.3.clone(), right: sizes.1.clone() }
     }
 }
 
-enum Source {
-    Url(Url),
-    Path(PathBuf),
-    Html(String)
-}
-
+/// High-level builder for generating PDFs
+///
+/// This builder
+#[derive(Clone)]
 pub struct PdfBuilder {
-    src: Source,
-    settings: PdfSettings
+    gs: HashMap<&'static str, Cow<'static, str>>,
+    os: HashMap<&'static str, Cow<'static, str>>,
 }
-
-pub struct PdfGlobal {
-    global_settings: *mut wkhtmltopdf_global_settings,
-    needs_delete: bool,
-}
-
-pub struct PdfObject {
-    object_settings: *mut wkhtmltopdf_object_settings,
-    needs_delete: bool,
-}
-
-pub struct PdfConverter {
-    converter: *mut wkhtmltopdf_converter,
-    _global: PdfGlobal, // just to control the drop sequence because PdfGlobal::drop also manages wkhtmktopdf_deinit
-}
-
-pub struct PdfOutput<'a> {
-    data: &'a [u8],
-    _converter: PdfConverter, // Don't drop the converter until data lifetime ends
-}
-
 
 impl PdfBuilder {
-    pub unsafe fn from_url<U: Into<Url>>(url: U) -> PdfBuilder {
-        PdfBuilder{
-            src: Source::Url(url.into()),
-            settings: Default::default(),
-        }
-    }
-    pub fn from_path<P: AsRef<Path>>(path: P) -> PdfBuilder {
-        PdfBuilder{
-            src: Source::Path(path.as_ref().to_owned()),
-            settings: Default::default(),
-        }
-    }
-    pub fn from_html<S: Into<String>>(html: S) -> PdfBuilder {
-        PdfBuilder{
-            src: Source::Html(html.into()),
-            settings: Default::default(),
+    pub fn new() -> PdfBuilder {
+        PdfBuilder {
+            gs: HashMap::new(),
+            os: HashMap::new(),
         }
     }
 
-    pub fn configure(&mut self, settings: PdfSettings) -> &mut PdfBuilder {
-        self.settings = settings;
+    /// The paper size of the output document (default A4)
+    pub fn page_size(&mut self, page_size: PageSize) -> &mut PdfBuilder {
+        match page_size {
+            PageSize::Custom(ref w, ref h) => {
+                self.gs.insert("size.width", w.value().into());
+                self.gs.insert("size.height", h.value().into());
+            },
+            _ => {
+                self.gs.insert("size.pageSize", page_size.value().into());
+            }
+        };
         self
     }
 
-    // Finalizers
-    pub fn build<'a>(&mut self) -> Result<PdfOutput<'a>> {
-        let mut global = PdfGlobal::new();
-        for (name, val) in self.settings.global_settings() {
-            try!( unsafe { global.set(name, &val) } );
-        }
+    /// Size of the page margins (default 10mm on all sides)
+    pub fn margin<M: Into<Margin>>(&mut self, margin: M) -> &mut PdfBuilder {
+        let m = margin.into();
+        self.gs.insert("margin.top", m.top.value().into());
+        self.gs.insert("margin.bottom", m.bottom.value().into());
+        self.gs.insert("margin.left", m.left.value().into());
+        self.gs.insert("margin.right", m.right.value().into());
+        self
+    }
 
-        let mut converter = global.create_converter();
-        let mut object = PdfObject::new();
-        for (name, val) in self.settings.object_settings() {
-            try!( unsafe { object.set(name, &val) } );
-        }
-
-        match self.src {
-            Source::Url(ref url) => {
-                try!( unsafe { object.set("page", url.as_str()) } );
-                converter.add_object(object);
-            },
-            Source::Path(ref path) => {
-                try!( unsafe { object.set("page", &path.to_string_lossy()) } );
-                converter.add_object(object);
-            },
-            Source::Html(ref html) => {
-                converter.add_html(object, html);
-            }
+    /// The orientation of the output document (default portrait)
+    pub fn orientation(&mut self, orientation: Orientation) -> &mut PdfBuilder {
+        let value = match orientation {
+            Orientation::Landscape => "Landscape",
+            Orientation::Portrait => "Portrait",
         };
+        self.gs.insert("orientation", value.into());
+        self
+    }
 
+    /// What dpi should we use when printin (default 72)
+    pub fn dpi(&mut self, dpi: u32) -> &mut PdfBuilder {
+        self.gs.insert("dpi", dpi.to_string().into());
+        self
+    }
+
+    /// JPEG image compression quality in percentage (default 94)
+    pub fn image_quality(&mut self, image_quality: u32) -> &mut PdfBuilder {
+        self.gs.insert("imageQuality", image_quality.to_string().into());
+        self
+    }
+
+    /// Title of the output document (default none)
+    pub fn title(&mut self, title: &str) -> &mut PdfBuilder {
+        self.gs.insert("documentTitle", title.to_string().into());
+        self
+    }
+
+    /// Enabled generating an outline (table of contents) in the sidebar with a specified depth
+    pub fn outline(&mut self, outline_depth: u32) -> &mut PdfBuilder {
+        self.gs.insert("outline", "true".into());
+        self.gs.insert("outlineDepth", outline_depth.to_string().into());
+        self
+    }
+
+    /// Set a global setting not explicitly supported by the PdfBuilder
+    ///
+    /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior (e.g. segfault)
+    ///   when generating the PdfGlobalSetting object
+    pub unsafe fn global_setting<S: Into<Cow<'static, str>>>(&mut self, name: &'static str, value: S) -> &mut PdfBuilder {
+        self.gs.insert(name, value.into());
+        self
+    }
+
+    /// Set an object setting not explicitly supported by the PdfBuilder
+    ///
+    /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior (e.g. segfault)
+    ///   when generating the PdfObjectSetting object
+    pub unsafe fn object_setting<S: Into<Cow<'static, str>>>(&mut self, name: &'static str, value: S) -> &mut PdfBuilder {
+        self.os.insert(name, value.into());
+        self
+    }
+
+    /// Untested...
+    pub fn build_from_url<'a, 'b, U: Into<Url>>(&'a mut self, url: U) -> Result<PdfOutput<'b>> {
+        let global = try!(self.global_settings());
+        let mut object = try!(self.object_settings());
+        let mut converter = global.create_converter();
+        try!( unsafe { object.set("page", url.into().as_str()) } );
+        converter.add_page_object(object);
         unsafe { converter.convert() }
     }
-}
 
-
-
-impl PdfGlobal {
-    pub fn new() -> PdfGlobal {
-        // todo: what if safe_wkhtmltopdf_init failed?
-        let mut global_count = WKHTMLTOPDF_GLOBAL_COUNT.lock().unwrap();
-        if *global_count == 0 {
-            let success = unsafe {
-                wkhtmltopdf_init(0) == 1
-            };
-            if success {
-                *global_count += 1;
-            }
-        }
-
-        unsafe {
-            PdfGlobal {
-                global_settings: wkhtmltopdf_create_global_settings(),
-                needs_delete: true,
-            }
-        }
+    /// Untested...
+    pub fn build_from_path<'a, 'b, P: AsRef<Path>>(&'a mut self, path: P) -> Result<PdfOutput<'b>> {
+        let global = try!(self.global_settings());
+        let mut object = try!(self.object_settings());
+        let mut converter = global.create_converter();
+        try!( unsafe { object.set("page", &path.as_ref().to_string_lossy()) } );
+        converter.add_page_object(object);
+        unsafe { converter.convert() }
     }
 
-    pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
-        let c_name = try!(CString::new(name)
-            .map_err(|err| format!("encountered null byte in 'name'- {}", err)));
-        let c_value = try!(CString::new(value)
-            .map_err(|err| format!("encountered null byte in 'value'- {}", err)));
-
-        // println!("wkhtmltopdf_set_global_setting {}={}", name, value);
-        match wkhtmltopdf_set_global_setting(self.global_settings, c_name.as_ptr(), c_value.as_ptr()) {
-            0 => Err(format!("failed to set '{}' to '{}'", name, value)),
-            1 => Ok(()),
-            _ => unreachable!("wkhtmltopdf_set_global_setting returned invalid value"),
-        }
+    /// Build a PDF using the provided HTML source input
+    ///
+    /// This method should be safe if using only safe builder methods, or if usage
+    ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
+    pub fn build_from_html<'a, 'b, S: AsRef<str>>(&'a mut self, html: S) -> Result<PdfOutput<'b>> {
+        let global = try!(self.global_settings());
+        let object = try!(self.object_settings());
+        let mut converter = global.create_converter();
+        converter.add_html_object(object, html.as_ref());
+        unsafe { converter.convert() }
     }
 
-    pub fn create_converter(mut self) -> PdfConverter {
-        // call wkhtmltopdf_create_convert which consumes global_settings
-        //   and thus we no longer need concern ourselves with deleting it
-        let converter = unsafe { wkhtmltopdf_create_converter(self.global_settings) };
-        self.needs_delete = false;
-
-        PdfConverter {
-            converter: converter,
-            _global: self,
+    /// Use the relevant settings to construct a low-level instance of `PdfGlobalSettings`
+    pub fn global_settings(&self) -> Result<PdfGlobalSettings> {
+        let mut global = PdfGlobalSettings::new();
+        for (ref name, ref val) in &self.gs {
+            try!( unsafe { global.set(name, &val) } );
         }
+        Ok(global)
+    }
+
+    /// Use the relevant settings to construct a low-level instance of `PdfObjectSettings`
+    pub fn object_settings(&self) -> Result<PdfObjectSettings> {
+        let mut object = PdfObjectSettings::new();
+        for (ref name, ref val) in &self.os {
+            try!( unsafe { object.set(name, &val) } );
+        }
+        Ok(object)
     }
 }
 
-impl PdfConverter {
-    pub fn add_object(&mut self, mut pdf_object: PdfObject) {
-        let null: *const c_char = std::ptr::null();
-        unsafe {
-            wkhtmltopdf_add_object(self.converter, pdf_object.object_settings, null);
-        };
-        pdf_object.needs_delete = false;
-    }
-
-    pub fn add_html(&mut self, mut pdf_object: PdfObject, html: &str) {
-        let c_html = CString::new(html).expect("null byte found");
-        unsafe {
-            wkhtmltopdf_add_object(self.converter, pdf_object.object_settings, c_html.as_ptr());
-        };
-        pdf_object.needs_delete = false;
-    }
-
-    pub unsafe fn convert<'a>(self) -> Result<PdfOutput<'a>> {
-        let rx = self.setup_callbacks();
-        let success = wkhtmltopdf_convert(self.converter) == 1;
-        self.remove_callbacks();
-
-        if success {
-            let mut buf_ptr = std::ptr::null();
-            let bytes = wkhtmltopdf_get_output(self.converter, &mut buf_ptr) as usize;
-            let pdf_slice = std::slice::from_raw_parts(buf_ptr, bytes);
-            Ok(PdfOutput{ data: pdf_slice, _converter: self })
-        } else {
-            match rx.recv().expect("sender disconnected") {
-                Ok(_) => unreachable!(),
-                Err(err) => {
-                    Err(format!("wkhtmltopdf_convert failed: {}", err))
-                }
-            }
-        }
-    }
-
-    fn remove_callbacks(&self) {
-        let id = self.converter as usize;
-
-        let _ = ERROR_CALLBACKS.lock().unwrap().remove(&id);
-        let _ = FINISHED_CALLBACKS.lock().unwrap().remove(&id);
-    }
-
-    fn setup_callbacks(&self) -> Receiver<Result<()>> {
-        let (tx, rx) = mpsc::channel();
-        let errors = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-
-        let tx_finished = tx.clone();
-        let errors_finished = errors.clone();
-        let on_finished = move |i| {
-            let errors = errors_finished.lock().unwrap();
-
-            let msg = match i {
-                1 => Ok(()),
-                _ => Err(errors.join(", ")),
-            };
-            let _ = tx_finished.send(msg);
-        };
-
-        let on_error = move |err| {
-            let mut errors = errors.lock().unwrap();
-            errors.push(err);
-        };
-
-        // Insert into our lazy static callbacks
-        {
-            let id = self.converter as usize;
-            let mut finished_callbacks = FINISHED_CALLBACKS.lock().unwrap();
-            finished_callbacks.insert(id, Box::new(on_finished));
-            let mut error_callbacks = ERROR_CALLBACKS.lock().unwrap();
-            error_callbacks.insert(id, Box::new(on_error));
-        }
-
-        unsafe {
-            wkhtmltopdf_set_finished_callback(self.converter, Some(finished_callback));
-            wkhtmltopdf_set_error_callback(self.converter, Some(error_callback));
-            // wkhtmltopdf_set_progress_changed_callback(self.converter, Some(progress_changed));
-            // wkhtmltopdf_set_phase_changed_callback(self.converter, Some(phase_changed));
-            // wkhtmltopdf_set_warning_callback(self.converter, Some(warning_cb));
-        }
-
-        rx
-    }
-
-}
-
-impl PdfObject {
-    pub fn new() -> PdfObject {
-        PdfObject {
-            object_settings: unsafe { wkhtmltopdf_create_object_settings() },
-            needs_delete: true,
-        }
-    }
-
-    pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
-        let c_name = try!(CString::new(name)
-            .map_err(|err| format!("encountered null byte in 'name'- {}", err)));
-        let c_value = try!(CString::new(value)
-            .map_err(|err| format!("encountered null byte in 'value'- {}", err)));
-
-        // println!("wkhtmltopdf_set_object_setting {}={}", name, value);
-        match wkhtmltopdf_set_object_setting(self.object_settings, c_name.as_ptr(), c_value.as_ptr()) {
-            0 => Err(format!("failed to set '{}' to '{}'", name, value)),
-            1 => Ok(()),
-            _ => unreachable!("wkhtmltopdf_set_object_setting returned invalid value"),
-        }
+impl <'a> PdfOutput<'a> {
+    // Helper to save the PDF output to a local file
+    pub fn save<P: AsRef<Path>>(&mut self, path: P) -> io::Result<File> {
+        let mut file = try!(File::create(path));
+        let _ = try!(io::copy(self, &mut file));
+        Ok(file)
     }
 }
 
 impl <'a> Read for PdfOutput<'a> {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.data.read(buf)
-    }
-}
-
-impl Drop for PdfGlobal {
-    fn drop(&mut self) {
-        if self.needs_delete {
-            unsafe { wkhtmltopdf_destroy_global_settings(self.global_settings); }
-        }
-
-        let mut global_count = WKHTMLTOPDF_GLOBAL_COUNT.lock().unwrap();
-        match *global_count {
-            0 => unreachable!("unsound attempt to deinit wkhtmlpdf"),
-            1 => {
-               let success = unsafe { wkhtmltopdf_deinit() == 1 };
-               if success {
-                   *global_count = 0;
-               } // TODO: what if failed to deinit?
-            },
-            _ => {
-                *global_count -= 1;
-            }
-        }
-    }
-}
-
-impl Drop for PdfConverter {
-    fn drop(&mut self) {
-        unsafe { wkhtmltopdf_destroy_converter(self.converter) }
-    }
-}
-
-impl Drop for PdfObject {
-    fn drop(&mut self) {
-        if self.needs_delete {
-            unsafe { wkhtmltopdf_destroy_object_settings(self.object_settings); }
-        }
     }
 }
 
@@ -464,54 +270,12 @@ impl <'a> std::fmt::Debug for PdfOutput<'a> {
     }
 }
 
-// unsafe extern fn void_callback(_converter: *mut wkhtmltopdf_converter) {
-//     println!("void callback fired");
-// }
-
-unsafe extern fn finished_callback(converter: *mut wkhtmltopdf_converter, val: c_int) {
-    let id = converter as usize;
-    {
-        // call and remove this converter's FINISHED_CALLBACK
-        let mut callbacks = FINISHED_CALLBACKS.lock().unwrap();
-        if let Some(mut cb) = callbacks.remove(&id) {
-            cb(val as i32);
-        }
-    }
-}
-
-unsafe extern fn error_callback(converter: *mut wkhtmltopdf_converter, ptr: *const c_char) {
-    let cstr = CStr::from_ptr(ptr);
-    let mut callbacks = ERROR_CALLBACKS.lock().unwrap();
-    let id = converter as usize;
-    let msg = cstr.to_string_lossy().into_owned();
-    match callbacks.get_mut(&id) {
-        Some(cb) => cb(msg),
-        None => println!("No callback for error: {}", msg),
-    }
-}
-
-
-// unsafe extern fn warning_cb(_converter: *mut wkhtmltopdf_converter, ptr: *const c_char) {
-//     let msg = CStr::from_ptr(ptr).to_string_lossy();
-//     println!("Warning: {}", msg);
-// }
-
-// unsafe extern fn progress_changed(_converter: *mut wkhtmltopdf_converter, val: c_int) {
-//     println!("{:3}", val);
-// }
-
-// unsafe extern fn phase_changed(converter: *mut wkhtmltopdf_converter) {
-//     let phase = wkhtmltopdf_current_phase(converter);
-//     let desc = wkhtmltopdf_phase_description(converter, phase);
-// 	println!("Phase: {}", CStr::from_ptr(desc).to_string_lossy());
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
     fn it_works() {
-        let res = PdfBuilder::from_html("foo").build();
+        let res = PdfBuilder::new().build_from_html("foo");
         assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 }
