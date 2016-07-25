@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Orientation","PDF Orientation"],["PageSize","Physical size of the paper"],["Size","Unit-aware sizes"]],"mod":[["lowlevel","Low-level wkhtmltopdf without the raw pointers"]],"struct":[["Margin","PDF Margins"],["PdfBuilder","High-level builder for generating PDFs"],["PdfOutput","Generated PDF output"]],"type":[["Result",""]]});
