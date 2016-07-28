@@ -1,11 +1,11 @@
 //! Low-level wkhtmltopdf without the raw pointers
 //!
-//! This module abstracts away the raw pointers of wkhmtltox-sys
+//! This module abstracts away the raw pointers of [wkhmtltox-sys](https://anowell.github.io/wkhtmltox-sys/wkhtmltox_sys/)
 //! while providing ownership and drop semantics necessary to safely use wkhtmltox-sys.
 //!
-//! It is recommended to use the `PdfBuilder` build methods which manage all of these details
-//! however, some usages (e.g. adding multiple objects to your PDF) may require
-//! using this module directory to achieve the level of control required
+//! It is recommended to use the `PdfBuilder` build methods which manage all of these details,
+//! however, some usage scenarios (e.g. adding multiple objects to your PDF) may require
+//! using this lower-level module to achieve sufficient control.
 use wkhtmltox_sys::pdf::*;
 use std::{ptr, slice};
 use std::collections::HashMap;
@@ -39,6 +39,7 @@ pub struct PdfObjectSettings {
 
 pub struct PdfConverter {
     converter: *mut wkhtmltopdf_converter,
+    objects: Vec<PdfObjectSettings>,
     // PdfGlobalSettings::drop also manages wkhtmktopdf_deinit, take ownership to delay drop
     _global: PdfGlobalSettings,
 }
@@ -49,6 +50,7 @@ impl PdfGlobalSettings {
         // todo: what if safe_wkhtmltopdf_init failed?
         let mut global_count = WKHTMLTOPDF_GLOBAL_COUNT.lock().unwrap();
         if *global_count == 0 {
+            debug!("wkhtmltopdf_init graphics=0");
             let success = unsafe {
                 wkhtmltopdf_init(0) == 1
             };
@@ -72,7 +74,7 @@ impl PdfGlobalSettings {
         let c_value = try!(CString::new(value)
             .map_err(|err| format!("encountered null byte in 'value'- {}", err)));
 
-        // println!("wkhtmltopdf_set_global_setting {}={}", name, value);
+        debug!("wkhtmltopdf_set_global_setting {}='{}'", name, value);
         match wkhtmltopdf_set_global_setting(self.global_settings, c_name.as_ptr(), c_value.as_ptr()) {
             0 => Err(format!("failed to set '{}' to '{}'", name, value)),
             1 => Ok(()),
@@ -83,11 +85,13 @@ impl PdfGlobalSettings {
     pub fn create_converter(mut self) -> PdfConverter {
         // call wkhtmltopdf_create_convert which consumes global_settings
         //   and thus we no longer need concern ourselves with deleting it
+        debug!("wkhtmltopdf_create_converter");
         let converter = unsafe { wkhtmltopdf_create_converter(self.global_settings) };
         self.needs_delete = false;
 
         PdfConverter {
             converter: converter,
+            objects: Vec::new(),
             _global: self,
         }
     }
@@ -97,30 +101,40 @@ impl PdfGlobalSettings {
 impl PdfConverter {
     pub fn add_page_object(&mut self, mut pdf_object: PdfObjectSettings) {
         let null: *const c_char = ptr::null();
+
+        debug!("wkhtmltopdf_add_object data=NULL");
         unsafe {
             wkhtmltopdf_add_object(self.converter, pdf_object.object_settings, null);
         };
         pdf_object.needs_delete = false;
+        self.objects.push(pdf_object);
     }
 
     pub fn add_html_object(&mut self, mut pdf_object: PdfObjectSettings, html: &str) {
         let c_html = CString::new(html).expect("null byte found");
+
+        debug!("wkhtmltopdf_add_object data=&html");
         unsafe {
             wkhtmltopdf_add_object(self.converter, pdf_object.object_settings, c_html.as_ptr());
         };
         pdf_object.needs_delete = false;
+        self.objects.push(pdf_object);
     }
 
-    pub unsafe fn convert<'a>(self) -> Result<PdfOutput<'a>> {
+    pub fn convert<'a>(self) -> Result<PdfOutput<'a>> {
         let rx = self.setup_callbacks();
-        let success = wkhtmltopdf_convert(self.converter) == 1;
+        debug!("wkhtmltopdf_convert");
+        let success = unsafe { wkhtmltopdf_convert(self.converter) == 1 };
         self.remove_callbacks();
 
         if success {
-            let mut buf_ptr = ptr::null();
-            let bytes = wkhtmltopdf_get_output(self.converter, &mut buf_ptr) as usize;
-            let pdf_slice = slice::from_raw_parts(buf_ptr, bytes);
-            Ok(PdfOutput{ data: pdf_slice, _converter: self })
+                let mut buf_ptr = ptr::null();
+                debug!("wkhtmltopdf_get_output");
+            unsafe {
+                let bytes = wkhtmltopdf_get_output(self.converter, &mut buf_ptr) as usize;
+                let pdf_slice = slice::from_raw_parts(buf_ptr, bytes);
+                Ok(PdfOutput{ data: pdf_slice, _converter: self })
+            }
         } else {
             match rx.recv().expect("sender disconnected") {
                 Ok(_) => unreachable!(),
@@ -169,7 +183,9 @@ impl PdfConverter {
         }
 
         unsafe {
+            debug!("wkhtmltopdf_set_finished_callback");
             wkhtmltopdf_set_finished_callback(self.converter, Some(finished_callback));
+            debug!("wkhtmltopdf_set_error_callback");
             wkhtmltopdf_set_error_callback(self.converter, Some(error_callback));
             // wkhtmltopdf_set_progress_changed_callback(self.converter, Some(progress_changed));
             // wkhtmltopdf_set_phase_changed_callback(self.converter, Some(phase_changed));
@@ -183,6 +199,7 @@ impl PdfConverter {
 
 impl PdfObjectSettings {
     pub fn new() -> PdfObjectSettings {
+        debug!("wkhtmltopdf_create_object_settings");
         PdfObjectSettings {
             object_settings: unsafe { wkhtmltopdf_create_object_settings() },
             needs_delete: true,
@@ -195,7 +212,7 @@ impl PdfObjectSettings {
         let c_value = try!(CString::new(value)
             .map_err(|err| format!("encountered null byte in 'value'- {}", err)));
 
-        // println!("wkhtmltopdf_set_object_setting {}={}", name, value);
+        debug!("wkhtmltopdf_set_object_setting {}='{}'", name, value);
         match wkhtmltopdf_set_object_setting(self.object_settings, c_name.as_ptr(), c_value.as_ptr()) {
             0 => Err(format!("failed to set '{}' to '{}'", name, value)),
             1 => Ok(()),
@@ -208,6 +225,7 @@ impl PdfObjectSettings {
 impl Drop for PdfGlobalSettings {
     fn drop(&mut self) {
         if self.needs_delete {
+            debug!("wkhtmltopdf_destroy_global_settings");
             unsafe { wkhtmltopdf_destroy_global_settings(self.global_settings); }
         }
 
@@ -215,10 +233,11 @@ impl Drop for PdfGlobalSettings {
         match *global_count {
             0 => unreachable!("unsound attempt to deinit wkhtmlpdf"),
             1 => {
-               let success = unsafe { wkhtmltopdf_deinit() == 1 };
-               if success {
-                   *global_count = 0;
-               } // TODO: what if failed to deinit?
+                debug!("wkhtmltopdf_deinit");
+                let success = unsafe { wkhtmltopdf_deinit() == 1 };
+                if success {
+                    *global_count = 0;
+                } // TODO: what if failed to deinit?
             },
             _ => {
                 *global_count -= 1;
@@ -229,6 +248,7 @@ impl Drop for PdfGlobalSettings {
 
 impl Drop for PdfConverter {
     fn drop(&mut self) {
+        debug!("wkhtmltopdf_destroy_converter");
         unsafe { wkhtmltopdf_destroy_converter(self.converter) }
     }
 }
@@ -236,6 +256,7 @@ impl Drop for PdfConverter {
 impl Drop for PdfObjectSettings {
     fn drop(&mut self) {
         if self.needs_delete {
+            debug!("wkhtmltopdf_destroy_object_settings");
             unsafe { wkhtmltopdf_destroy_object_settings(self.object_settings); }
         }
     }

@@ -1,8 +1,7 @@
 extern crate wkhtmltox_sys;
 extern crate url;
-
-#[macro_use]
-extern crate lazy_static;
+#[macro_use] extern crate lazy_static;
+#[macro_use] extern crate log;
 
 pub mod lowlevel;
 
@@ -198,24 +197,30 @@ impl PdfBuilder {
         self
     }
 
-    /// Untested...
-    pub fn build_from_url<'a, 'b, U: Into<Url>>(&'a mut self, url: U) -> Result<PdfOutput<'b>> {
+    /// Build a PDF using a URL as the source input
+    ///
+    /// This method should be safe if using only safe builder methods, or if usage
+    ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
+    pub fn build_from_url<'a, 'b>(&'a mut self, url: Url) -> Result<PdfOutput<'b>> {
         let global = try!(self.global_settings());
         let mut object = try!(self.object_settings());
         let mut converter = global.create_converter();
-        try!( unsafe { object.set("page", url.into().as_str()) } );
+        try!( unsafe { object.set("page", url.as_str()) } );
         converter.add_page_object(object);
-        unsafe { converter.convert() }
+        converter.convert()
     }
 
-    /// Untested...
+    /// Build a PDF using the provided HTML from a local file
+    ///
+    /// This method should be safe if using only safe builder methods, or if usage
+    ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_path<'a, 'b, P: AsRef<Path>>(&'a mut self, path: P) -> Result<PdfOutput<'b>> {
         let global = try!(self.global_settings());
         let mut object = try!(self.object_settings());
         let mut converter = global.create_converter();
         try!( unsafe { object.set("page", &path.as_ref().to_string_lossy()) } );
         converter.add_page_object(object);
-        unsafe { converter.convert() }
+        converter.convert()
     }
 
     /// Build a PDF using the provided HTML source input
@@ -227,7 +232,7 @@ impl PdfBuilder {
         let object = try!(self.object_settings());
         let mut converter = global.create_converter();
         converter.add_html_object(object, html.as_ref());
-        unsafe { converter.convert() }
+        converter.convert()
     }
 
     /// Use the relevant settings to construct a low-level instance of `PdfGlobalSettings`
@@ -273,10 +278,19 @@ impl <'a> std::fmt::Debug for PdfOutput<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn it_works() {
-        let res = PdfBuilder::new().build_from_html("foo");
+    fn basic_from_html() {
+        let res = PdfBuilder::new().build_from_html("basic <b>from</b> html");
         assert!(res.is_ok(), "{}", res.unwrap_err());
+    }
+
+    #[test]
+    fn basic_from_url() {
+        unsafe {
+            let res = PdfBuilder::new().build_from_url("https://www.rust-lang.org/en-us/".parse().unwrap());
+            assert!(res.is_ok(), "{}", res.unwrap_err());
+        }
     }
 }
 
