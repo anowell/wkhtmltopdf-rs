@@ -1,9 +1,11 @@
 extern crate wkhtmltopdf;
 extern crate url;
+extern crate env_logger;
 
 use wkhtmltopdf::*;
 
 fn main() {
+    env_logger::init().unwrap();
     let html = r#"
       <html><body>
         <h1>Rust can haz PDFs</h1>
