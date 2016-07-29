@@ -29,7 +29,6 @@ Basic usage looks like this:
 ```
 
 ## TODO
-- [ ] Error cleanup
 - [ ] Support more settings, figure out why some flags don't work (like 'outlineDepth')
 - [ ] Tests and better examples
 

@@ -30,7 +30,7 @@ fn main() {
 
     // Add an html object and convert
     c.add_html_object(os, &html);
-    let mut pdfout = unsafe { c.convert().expect("failed to convert") };
+    let mut pdfout = c.convert().expect("failed to convert");
 
     // let mut pdfout = pdfout;
     let mut file = File::create("basic.pdf").expect("failed to create basic.pdf");

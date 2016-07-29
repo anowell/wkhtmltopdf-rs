@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::ffi::{CString, CStr};
 use std::os::raw::{c_char, c_int};
 use std::sync::{Arc, Mutex, mpsc};
-use super::{Result, PdfOutput};
+use super::{Result, Error, PdfOutput};
 
 lazy_static! {
     // Globally count wkhtmltopdf handles so we can safely init/deinit the underlying wkhtmltopdf singleton
@@ -39,7 +39,6 @@ pub struct PdfObjectSettings {
 
 pub struct PdfConverter {
     converter: *mut wkhtmltopdf_converter,
-    objects: Vec<PdfObjectSettings>,
     // PdfGlobalSettings::drop also manages wkhtmktopdf_deinit, take ownership to delay drop
     _global: PdfGlobalSettings,
 }
@@ -47,14 +46,19 @@ pub struct PdfConverter {
 
 impl PdfGlobalSettings {
     pub fn new() -> PdfGlobalSettings {
-        // todo: what if safe_wkhtmltopdf_init failed?
-        let mut global_count = WKHTMLTOPDF_GLOBAL_COUNT.lock().unwrap();
-        if *global_count == 0 {
-            debug!("wkhtmltopdf_init graphics=0");
-            let success = unsafe {
-                wkhtmltopdf_init(0) == 1
-            };
-            if success {
+        {
+            let mut global_count = WKHTMLTOPDF_GLOBAL_COUNT.lock().unwrap();
+            if *global_count == 0 {
+                debug!("wkhtmltopdf_init graphics=0");
+                let success = unsafe {
+                    wkhtmltopdf_init(0) == 1
+                };
+                if success {
+                    *global_count += 1;
+                } else {
+                    error!("failed to initialize wkhtmltopdf");
+                }
+            } else {
                 *global_count += 1;
             }
         }
@@ -69,14 +73,12 @@ impl PdfGlobalSettings {
 
     // Unsafe as it may cause undefined behavior (generally segfault) if name or value are not valid
     pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
-        let c_name = try!(CString::new(name)
-            .map_err(|err| format!("encountered null byte in 'name'- {}", err)));
-        let c_value = try!(CString::new(value)
-            .map_err(|err| format!("encountered null byte in 'value'- {}", err)));
+        let c_name = try!(CString::new(name));
+        let c_value = try!(CString::new(value));
 
         debug!("wkhtmltopdf_set_global_setting {}='{}'", name, value);
         match wkhtmltopdf_set_global_setting(self.global_settings, c_name.as_ptr(), c_value.as_ptr()) {
-            0 => Err(format!("failed to set '{}' to '{}'", name, value)),
+            0 => Err(Error::GlobalSettingFailure(name.into(), value.into())),
             1 => Ok(()),
             _ => unreachable!("wkhtmltopdf_set_global_setting returned invalid value"),
         }
@@ -91,7 +93,6 @@ impl PdfGlobalSettings {
 
         PdfConverter {
             converter: converter,
-            objects: Vec::new(),
             _global: self,
         }
     }
@@ -107,7 +108,6 @@ impl PdfConverter {
             wkhtmltopdf_add_object(self.converter, pdf_object.object_settings, null);
         };
         pdf_object.needs_delete = false;
-        self.objects.push(pdf_object);
     }
 
     pub fn add_html_object(&mut self, mut pdf_object: PdfObjectSettings, html: &str) {
@@ -118,7 +118,6 @@ impl PdfConverter {
             wkhtmltopdf_add_object(self.converter, pdf_object.object_settings, c_html.as_ptr());
         };
         pdf_object.needs_delete = false;
-        self.objects.push(pdf_object);
     }
 
     pub fn convert<'a>(self) -> Result<PdfOutput<'a>> {
@@ -137,10 +136,8 @@ impl PdfConverter {
             }
         } else {
             match rx.recv().expect("sender disconnected") {
-                Ok(_) => unreachable!(),
-                Err(err) => {
-                    Err(format!("wkhtmltopdf_convert failed: {}", err))
-                }
+                Ok(_) => unreachable!("failed without errors"),
+                Err(err) => Err(err)
             }
         }
     }
@@ -161,11 +158,11 @@ impl PdfConverter {
         let on_finished = move |i| {
             let errors = errors_finished.lock().unwrap();
 
-            let msg = match i {
+            let res = match i {
                 1 => Ok(()),
-                _ => Err(errors.join(", ")),
+                _ => Err(Error::ConversionFailed(errors.join(", "))),
             };
-            let _ = tx_finished.send(msg);
+            let _ = tx_finished.send(res);
         };
 
         let on_error = move |err| {
@@ -207,14 +204,12 @@ impl PdfObjectSettings {
     }
 
     pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
-        let c_name = try!(CString::new(name)
-            .map_err(|err| format!("encountered null byte in 'name'- {}", err)));
-        let c_value = try!(CString::new(value)
-            .map_err(|err| format!("encountered null byte in 'value'- {}", err)));
+        let c_name = try!(CString::new(name));
+        let c_value = try!(CString::new(value));
 
         debug!("wkhtmltopdf_set_object_setting {}='{}'", name, value);
         match wkhtmltopdf_set_object_setting(self.object_settings, c_name.as_ptr(), c_value.as_ptr()) {
-            0 => Err(format!("failed to set '{}' to '{}'", name, value)),
+            0 => Err(Error::ObjectSettingFailure(name.into(), value.into())),
             1 => Ok(()),
             _ => unreachable!("wkhtmltopdf_set_object_setting returned invalid value"),
         }
@@ -231,13 +226,15 @@ impl Drop for PdfGlobalSettings {
 
         let mut global_count = WKHTMLTOPDF_GLOBAL_COUNT.lock().unwrap();
         match *global_count {
-            0 => unreachable!("unsound attempt to deinit wkhtmlpdf"),
+            0 => unreachable!("unsound attempt to deinitialize wkhtmlpdf"),
             1 => {
                 debug!("wkhtmltopdf_deinit");
                 let success = unsafe { wkhtmltopdf_deinit() == 1 };
                 if success {
                     *global_count = 0;
-                } // TODO: what if failed to deinit?
+                } else {
+                    warn!("Failed to deinitialize wkhtmltopdf")
+                }
             },
             _ => {
                 *global_count -= 1;

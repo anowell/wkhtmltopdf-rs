@@ -2,8 +2,12 @@ extern crate wkhtmltox_sys;
 extern crate url;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
+#[macro_use] extern crate quick_error;
 
 pub mod lowlevel;
+
+mod error;
+pub use error::*;
 
 use std::path::Path;
 use url::Url;
@@ -13,7 +17,6 @@ use std::borrow::Cow;
 use std::fs::File;
 use lowlevel::*;
 
-pub type Result<T> = std::result::Result<T, String>; // TODO: better error type than String
 
 /// Generated PDF output
 pub struct PdfOutput<'a> {
@@ -277,20 +280,21 @@ impl <'a> std::fmt::Debug for PdfOutput<'a> {
 
 #[cfg(test)]
 mod tests {
+    extern crate env_logger;
     use super::*;
 
     #[test]
     fn basic_from_html() {
+        let _ = env_logger::init();
         let res = PdfBuilder::new().build_from_html("basic <b>from</b> html");
         assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 
     #[test]
     fn basic_from_url() {
-        unsafe {
-            let res = PdfBuilder::new().build_from_url("https://www.rust-lang.org/en-us/".parse().unwrap());
-            assert!(res.is_ok(), "{}", res.unwrap_err());
-        }
+        let _ = env_logger::init();
+        let res = PdfBuilder::new().build_from_url("https://www.rust-lang.org/en-us/".parse().unwrap());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 }
 
