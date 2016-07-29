@@ -28,8 +28,14 @@ Basic usage looks like this:
   println!("generated PDF saved as: foo.pdf");
 ```
 
-## TODO
-- [ ] Support more settings, figure out why some flags don't work (like 'outlineDepth')
-- [ ] Tests and better examples
+## Build
+
+As long as the includes are installed (e.g. `pdf.h`), then it's all cargo:
+
+```
+cargo build
+```
+
+`cargo test` is sorta blocked by Issue #1.
 
 **Contributions welcome in the form of issue reports, feature requests, feedback, and/or pull request.**
