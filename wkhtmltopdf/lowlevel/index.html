@@ -47,15 +47,15 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-7' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#1-265' title='goto source code'>[src]</a></span></h1>
+               </span><a id='src-9' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#1-283' title='goto source code'>[src]</a></span></h1>
 <div class='docblock'><p>Low-level wkhtmltopdf without the raw pointers</p>
 
-<p>This module abstracts away the raw pointers of wkhmtltox-sys
+<p>This module abstracts away the raw pointers of <a href="https://anowell.github.io/wkhtmltox-sys/wkhtmltox_sys/">wkhmtltox-sys</a>
 while providing ownership and drop semantics necessary to safely use wkhtmltox-sys.</p>
 
-<p>It is recommended to use the <code>PdfBuilder</code> build methods which manage all of these details
-however, some usages (e.g. adding multiple objects to your PDF) may require
-using this module directory to achieve the level of control required</p>
+<p>It is recommended to use the <code>PdfBuilder</code> build methods which manage all of these details,
+however, some usage scenarios (e.g. adding multiple objects to your PDF) may require
+using this lower-level module to achieve sufficient control.</p>
 </div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
                        <tr class=' module-item'>
