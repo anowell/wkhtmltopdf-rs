@@ -1,6 +1,6 @@
 
 
-use std::{io, ffi, result};
+use std::{io, result};
 
 quick_error! {
     #[derive(Debug)]
@@ -12,11 +12,14 @@ quick_error! {
             from()
         }
 
-        NulError(err: ffi::NulError) {
-            description(err.description())
-            display("CString error: {}", err)
-            cause(err)
-            from()
+        AlreadyInitialized {
+            description("wkhtmltopdf already initialized")
+            display("Wkhtmltopdf has already been initialized")
+        }
+
+        InitThreadMismatch(before: usize, after: usize) {
+            description("initialization thread mismatch")
+            display("Wkhtmltopdf QApplication originally started on thread {:0x}, cannot recreate on thread {:0x}", before, after)
         }
 
         ConversionFailed(msg: String) {

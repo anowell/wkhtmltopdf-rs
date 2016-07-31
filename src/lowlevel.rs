@@ -12,11 +12,13 @@ use std::collections::HashMap;
 use std::ffi::{CString, CStr};
 use std::os::raw::{c_char, c_int};
 use std::sync::{Arc, Mutex, mpsc};
+use thread_id;
 use super::{Result, Error, PdfOutput};
 
 lazy_static! {
     // Globally count wkhtmltopdf handles so we can safely init/deinit the underlying wkhtmltopdf singleton
-    static ref WKHTMLTOPDF_GLOBAL_COUNT: Mutex<u32> = Mutex::new(0);
+    static ref WKHTMLTOPDF_IS_INITIALIZED: Mutex<bool> = Mutex::new(false);
+    static ref WKHTMLTOPDF_INIT_THREAD: usize = thread_id::get();
 
     // Globally track callbacks since wkhtmltopdf doesn't allow injecting any userdata
     // The HashMap key is the converter's raw pointer cast as usize, so we can have unique callbacks per converter
@@ -43,38 +45,42 @@ pub struct PdfConverter {
     _global: PdfGlobalSettings,
 }
 
-
 impl PdfGlobalSettings {
-    pub fn new() -> PdfGlobalSettings {
+    pub fn new() -> Result<PdfGlobalSettings> {
+        if *WKHTMLTOPDF_INIT_THREAD != thread_id::get() {
+            // A lot of QT functionality expects to run from the same thread that it was first initialized on
+            return Err(Error::InitThreadMismatch(*WKHTMLTOPDF_INIT_THREAD, thread_id::get()))
+        }
+
         {
-            let mut global_count = WKHTMLTOPDF_GLOBAL_COUNT.lock().unwrap();
-            if *global_count == 0 {
-                debug!("wkhtmltopdf_init graphics=0");
-                let success = unsafe {
-                    wkhtmltopdf_init(0) == 1
-                };
-                if success {
-                    *global_count += 1;
-                } else {
-                    error!("failed to initialize wkhtmltopdf");
-                }
+            let mut is_intialized = WKHTMLTOPDF_IS_INITIALIZED.lock().unwrap();
+            if *is_intialized {
+                return Err(Error::AlreadyInitialized)
+            }
+
+            debug!("wkhtmltopdf_init graphics=0");
+            let success = unsafe {
+                wkhtmltopdf_init(0) == 1
+            };
+            if success {
+                *is_intialized = true;
             } else {
-                *global_count += 1;
+                error!("failed to initialize wkhtmltopdf");
             }
         }
 
-        unsafe {
-            PdfGlobalSettings {
-                global_settings: wkhtmltopdf_create_global_settings(),
-                needs_delete: true,
-            }
-        }
+        debug!("wkhtmltopdf_create_global_settings");
+        let gs = unsafe { wkhtmltopdf_create_global_settings() };
+        Ok(PdfGlobalSettings {
+            global_settings: gs,
+            needs_delete: true,
+        })
     }
 
     // Unsafe as it may cause undefined behavior (generally segfault) if name or value are not valid
     pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
-        let c_name = try!(CString::new(name));
-        let c_value = try!(CString::new(value));
+        let c_name = CString::new(name).expect("setting name may not contain interior null bytes");
+        let c_value = CString::new(value).expect("setting value may not contain interior null bytes");
 
         debug!("wkhtmltopdf_set_global_setting {}='{}'", name, value);
         match wkhtmltopdf_set_global_setting(self.global_settings, c_name.as_ptr(), c_value.as_ptr()) {
@@ -204,8 +210,8 @@ impl PdfObjectSettings {
     }
 
     pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
-        let c_name = try!(CString::new(name));
-        let c_value = try!(CString::new(value));
+        let c_name = CString::new(name).expect("setting name may not contain interior null bytes");
+        let c_value = CString::new(value).expect("setting value may not contain interior null bytes");
 
         debug!("wkhtmltopdf_set_object_setting {}='{}'", name, value);
         match wkhtmltopdf_set_object_setting(self.object_settings, c_name.as_ptr(), c_value.as_ptr()) {
@@ -224,21 +230,17 @@ impl Drop for PdfGlobalSettings {
             unsafe { wkhtmltopdf_destroy_global_settings(self.global_settings); }
         }
 
-        let mut global_count = WKHTMLTOPDF_GLOBAL_COUNT.lock().unwrap();
-        match *global_count {
-            0 => unreachable!("unsound attempt to deinitialize wkhtmlpdf"),
-            1 => {
-                debug!("wkhtmltopdf_deinit");
-                let success = unsafe { wkhtmltopdf_deinit() == 1 };
-                if success {
-                    *global_count = 0;
-                } else {
-                    warn!("Failed to deinitialize wkhtmltopdf")
-                }
-            },
-            _ => {
-                *global_count -= 1;
-            }
+        let mut is_init = WKHTMLTOPDF_IS_INITIALIZED.lock().unwrap();
+        if !*is_init {
+            unreachable!("unsound attempt to deinitialize wkhtmlpdf")
+        }
+
+        debug!("wkhtmltopdf_deinit");
+        let success = unsafe { wkhtmltopdf_deinit() == 1 };
+        if success {
+            *is_init = false;
+        } else {
+            warn!("Failed to deinitialize wkhtmltopdf")
         }
     }
 }

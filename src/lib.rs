@@ -1,5 +1,6 @@
 extern crate wkhtmltox_sys;
 extern crate url;
+extern crate thread_id;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 #[macro_use] extern crate quick_error;
@@ -240,7 +241,7 @@ impl PdfBuilder {
 
     /// Use the relevant settings to construct a low-level instance of `PdfGlobalSettings`
     pub fn global_settings(&self) -> Result<PdfGlobalSettings> {
-        let mut global = PdfGlobalSettings::new();
+        let mut global = try!(PdfGlobalSettings::new());
         for (ref name, ref val) in &self.gs {
             try!( unsafe { global.set(name, &val) } );
         }
