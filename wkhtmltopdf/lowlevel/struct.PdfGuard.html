@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `PdfObjectSettings` struct in crate `wkhtmltopdf`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, PdfObjectSettings">
+    <meta name="description" content="API documentation for the Rust `PdfGuard` struct in crate `wkhtmltopdf`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, PdfGuard">
 
-    <title>wkhtmltopdf::lowlevel::PdfObjectSettings - Rust</title>
+    <title>wkhtmltopdf::lowlevel::PdfGuard - Rust</title>
 
     <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../main.css">
@@ -28,7 +28,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'><a href='../index.html'>wkhtmltopdf</a>::<wbr><a href='index.html'>lowlevel</a></p><script>window.sidebarCurrent = {name: 'PdfObjectSettings', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+        <p class='location'><a href='../index.html'>wkhtmltopdf</a>::<wbr><a href='index.html'>lowlevel</a></p><script>window.sidebarCurrent = {name: 'PdfGuard', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
     </nav>
 
     <nav class="sub">
@@ -43,18 +43,23 @@
     </nav>
 
     <section id='main' class="content struct">
-<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>wkhtmltopdf</a>::<wbr><a href='index.html'>lowlevel</a>::<wbr><a class='struct' href=''>PdfObjectSettings</a></span><span class='out-of-band'><span id='render-detail'>
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>wkhtmltopdf</a>::<wbr><a href='index.html'>lowlevel</a>::<wbr><a class='struct' href=''>PdfGuard</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-79' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#60-64' title='goto source code'>[src]</a></span></h1>
-<pre class='rust struct'>pub struct PdfObjectSettings {
+               </span><a id='src-72' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#48' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct PdfGuard {
     // some fields omitted
-}</pre><div class='docblock'><p>Safe wrapper for managing wkhtmltopdf object settings</p>
-</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfObjectSettings.html' title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-183' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#253-273' title='goto source code'>[src]</a></span></h3>
-<div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfObjectSettings.html' title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a></code></h4>
-<h4 id='method.set' class='method'><code>unsafe fn <a href='#method.set' class='fnname'>set</a>(&amp;mut self, name: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, value: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
-</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfObjectSettings.html' title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-214' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#292-299' title='goto source code'>[src]</a></span></h3>
+}</pre><div class='docblock'><p>Handles initialization and deinitialization of wkhtmltopdf</p>
+
+<p>This struct may only be initialized once per process
+  which is <a href="https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890">a fundamental limitation of wkhtmltopdf</a>.</p>
+
+<p>When it goes out of scope, wkhtmltopdf will be deinitialized
+  and further PDF generation will not be possible.</p>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl !<a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a> for <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfGuard.html' title='wkhtmltopdf::lowlevel::PdfGuard'>PdfGuard</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-74' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#49' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl !<a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html' title='core::marker::Sync'>Sync</a> for <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfGuard.html' title='wkhtmltopdf::lowlevel::PdfGuard'>PdfGuard</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-75' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#50' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfGuard.html' title='wkhtmltopdf::lowlevel::PdfGuard'>PdfGuard</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-228' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#310-320' title='goto source code'>[src]</a></span></h3>
 <div class='impl-items'><h4 id='method.drop' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></h4>
 <div class='docblock'><p>A method called when the value goes out of scope. <a href="https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop">Read more</a></p>
 </div></div></section>

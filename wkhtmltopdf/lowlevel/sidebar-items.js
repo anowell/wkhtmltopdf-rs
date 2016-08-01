@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["PdfConverter",""],["PdfGlobalSettings",""],["PdfObjectSettings",""]]});
+initSidebarItems({"fn":[["pdf_init","Initializes wkhtmltopdf"]],"struct":[["PdfConverter","Safe wrapper for working with the wkhtmltopdf converter"],["PdfGlobalSettings","Safe wrapper for managing wkhtmltopdf global settings"],["PdfGuard","Handles initialization and deinitialization of wkhtmltopdf"],["PdfObjectSettings","Safe wrapper for managing wkhtmltopdf object settings"]]});

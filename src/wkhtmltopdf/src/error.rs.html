@@ -81,14 +81,40 @@
 <span id="37">37</span>
 <span id="38">38</span>
 <span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
 </pre><pre class='rust '>
 
 
-<span class='kw'>use</span> <span class='ident'>std</span>::{<span class='ident'>io</span>, <span class='ident'>ffi</span>, <span class='ident'>result</span>};
+<span class='kw'>use</span> <span class='ident'>std</span>::{<span class='ident'>io</span>, <span class='ident'>result</span>};
 
 <span class='macro'>quick_error</span><span class='macro'>!</span> {
+    <span class='doccomment'>/// The error type for wkhtmltopdf generation</span>
     <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>)]</span>
     <span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>Error</span> {
+        <span class='doccomment'>/// Indicates an I/O error that occurred during PDF generation</span>
         <span class='ident'>IoError</span>(<span class='ident'>err</span>: <span class='ident'>io</span>::<span class='ident'>Error</span>) {
             <span class='ident'>description</span>(<span class='string'>&quot;io error&quot;</span>)
             <span class='ident'>display</span>(<span class='string'>&quot;I/O error: {}&quot;</span>, <span class='ident'>err</span>)
@@ -96,23 +122,44 @@
             <span class='ident'>from</span>()
         }
 
-        <span class='ident'>NulError</span>(<span class='ident'>err</span>: <span class='ident'>ffi</span>::<span class='ident'>NulError</span>) {
-            <span class='ident'>description</span>(<span class='ident'>err</span>.<span class='ident'>description</span>())
-            <span class='ident'>display</span>(<span class='string'>&quot;CString error: {}&quot;</span>, <span class='ident'>err</span>)
-            <span class='ident'>cause</span>(<span class='ident'>err</span>)
-            <span class='ident'>from</span>()
+        <span class='doccomment'>/// Indicates the wkhtmltopdf could be be initialized because it can only be initialized once per process (wkhtmltopdf limitation)</span>
+        <span class='ident'>IllegalInit</span> {
+            <span class='ident'>description</span>(<span class='string'>&quot;illegal initialization&quot;</span>)
+            <span class='ident'>display</span>(<span class='string'>&quot;Wkhtmltopdf may not be initialized more than once per process&quot;</span>)
         }
 
+        <span class='doccomment'>/// Indicates that wkhtmltopdf has not yet been initialized in this process</span>
+        <span class='ident'>NotInitialized</span> {
+            <span class='ident'>description</span>(<span class='string'>&quot;not initialized&quot;</span>)
+            <span class='ident'>display</span>(<span class='string'>&quot;Wkhtmltopdf is not currently initialized&quot;</span>)
+        }
+
+        <span class='doccomment'>/// Indicates that wkhtmltopdf is blocked by another request within this process (wkhtmltopdf limitation)</span>
+        <span class='ident'>Blocked</span> {
+            <span class='ident'>description</span>(<span class='string'>&quot;wkhtmltopdf blocked&quot;</span>)
+            <span class='ident'>display</span>(<span class='string'>&quot;Wkhtmltopdf is currently blocked by another initialized instance&quot;</span>)
+        }
+
+        <span class='doccomment'>/// Indicates that wkhtmltopdf was initialized on a different thread than this PDF generation atttempt (wkhtmltopdf limitation)</span>
+        <span class='ident'>ThreadMismatch</span>(<span class='ident'>before</span>: <span class='ident'>usize</span>, <span class='ident'>after</span>: <span class='ident'>usize</span>) {
+            <span class='ident'>description</span>(<span class='string'>&quot;thread mismatch&quot;</span>)
+            <span class='ident'>display</span>(<span class='string'>&quot;Wkhtmltopdf originally started on thread {:0x}, cannot recreate on thread {:0x}&quot;</span>, <span class='ident'>before</span>, <span class='ident'>after</span>)
+        }
+
+
+        <span class='doccomment'>/// Indicates that wkhtmltopdf conversion failed - internal error message comes directly from wkhtmltopdf</span>
         <span class='ident'>ConversionFailed</span>(<span class='ident'>msg</span>: <span class='ident'>String</span>) {
             <span class='ident'>description</span>(<span class='string'>&quot;conversion failed&quot;</span>)
             <span class='ident'>display</span>(<span class='string'>&quot;Conversion failed: {}&quot;</span>, <span class='ident'>msg</span>)
         }
 
+        <span class='doccomment'>/// Indicates that wkhtmltopdf failed to set a particular global setting</span>
         <span class='ident'>GlobalSettingFailure</span>(<span class='ident'>name</span>: <span class='ident'>String</span>, <span class='ident'>value</span>: <span class='ident'>String</span>) {
             <span class='ident'>description</span>(<span class='string'>&quot;global setting failure&quot;</span>)
             <span class='ident'>display</span>(<span class='string'>&quot;Failed to update global setting &#39;{}&#39;=&#39;{}&#39;&quot;</span>, <span class='ident'>name</span>, <span class='ident'>value</span>)
         }
 
+        <span class='doccomment'>/// Indicates that wkhtmltopdf failed to set a particular object setting</span>
         <span class='ident'>ObjectSettingFailure</span>(<span class='ident'>name</span>: <span class='ident'>String</span>, <span class='ident'>value</span>: <span class='ident'>String</span>) {
             <span class='ident'>description</span>(<span class='string'>&quot;object setting failure&quot;</span>)
             <span class='ident'>display</span>(<span class='string'>&quot;Failed to update object setting &#39;{}&#39;=&#39;{}&#39;&quot;</span>, <span class='ident'>name</span>, <span class='ident'>value</span>)
@@ -120,6 +167,7 @@
     }
 }
 
+<span class='doccomment'>/// A specialized `Result` type for wkhtmltopdf generation</span>
 <span class='kw'>pub</span> <span class='kw'>type</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>result</span>::<span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>Error</span><span class='op'>&gt;</span>;</pre>
 </section>
     <section id='search' class="content hidden"></section>

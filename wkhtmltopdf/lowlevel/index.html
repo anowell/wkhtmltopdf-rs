@@ -47,7 +47,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-9' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#1-283' title='goto source code'>[src]</a></span></h1>
+               </span><a id='src-10' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#1-343' title='goto source code'>[src]</a></span></h1>
 <div class='docblock'><p>Low-level wkhtmltopdf without the raw pointers</p>
 
 <p>This module abstracts away the raw pointers of <a href="https://anowell.github.io/wkhtmltox-sys/wkhtmltox_sys/">wkhmtltox-sys</a>
@@ -62,21 +62,36 @@ using this lower-level module to achieve sufficient control.</p>
                            <td><a class='struct' href='struct.PdfConverter.html'
                                   title='wkhtmltopdf::lowlevel::PdfConverter'>PdfConverter</a></td>
                            <td class='docblock short'>
-                                
+                                <p>Safe wrapper for working with the wkhtmltopdf converter</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
                            <td><a class='struct' href='struct.PdfGlobalSettings.html'
                                   title='wkhtmltopdf::lowlevel::PdfGlobalSettings'>PdfGlobalSettings</a></td>
                            <td class='docblock short'>
-                                
+                                <p>Safe wrapper for managing wkhtmltopdf global settings</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='struct' href='struct.PdfGuard.html'
+                                  title='wkhtmltopdf::lowlevel::PdfGuard'>PdfGuard</a></td>
+                           <td class='docblock short'>
+                                <p>Handles initialization and deinitialization of wkhtmltopdf</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
                            <td><a class='struct' href='struct.PdfObjectSettings.html'
                                   title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a></td>
                            <td class='docblock short'>
-                                
+                                <p>Safe wrapper for managing wkhtmltopdf object settings</p>
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.pdf_init.html'
+                                  title='wkhtmltopdf::lowlevel::pdf_init'>pdf_init</a></td>
+                           <td class='docblock short'>
+                                <p>Initializes wkhtmltopdf</p>
                            </td>
                        </tr></table></section>
     <section id='search' class="content hidden"></section>

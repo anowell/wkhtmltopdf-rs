@@ -342,9 +342,32 @@
 <span id="298">298</span>
 <span id="299">299</span>
 <span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
 </pre><pre class='rust '>
+<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>feature</span>(<span class='ident'>optin_builtin_traits</span>)]</span>
+
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>wkhtmltox_sys</span>;
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>url</span>;
+<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>thread_id</span>;
 <span class='attribute'>#[<span class='ident'>macro_use</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>lazy_static</span>;
 <span class='attribute'>#[<span class='ident'>macro_use</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>log</span>;
 <span class='attribute'>#[<span class='ident'>macro_use</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>quick_error</span>;
@@ -451,9 +474,28 @@
     }
 }
 
-<span class='doccomment'>/// High-level builder for generating PDFs</span>
-<span class='doccomment'>///</span>
-<span class='doccomment'>/// This builder</span>
+<span class='doccomment'>/// Structure for initializing the underlying wkhtmltopdf</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfApplication</span> {
+    <span class='ident'>_guard</span>: <span class='ident'>PdfGuard</span>
+}
+
+<span class='kw'>impl</span> <span class='ident'>PdfApplication</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>() <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>PdfApplication</span><span class='op'>&gt;</span> {
+        <span class='ident'>pdf_init</span>().<span class='ident'>map</span>( <span class='op'>|</span><span class='ident'>guard</span><span class='op'>|</span>
+            <span class='ident'>PdfApplication</span> { <span class='ident'>_guard</span>: <span class='ident'>guard</span> }
+        )
+    }
+
+    <span class='comment'>// mutable reference allows compiler to ensure only one builder active at a time</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>builder</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>PdfBuilder</span> {
+        <span class='ident'>PdfBuilder</span> {
+            <span class='ident'>gs</span>: <span class='ident'>HashMap</span>::<span class='ident'>new</span>(),
+            <span class='ident'>os</span>: <span class='ident'>HashMap</span>::<span class='ident'>new</span>(),
+        }
+    }
+}
+
+<span class='doccomment'>/// High-level builder for generating PDFs (initialized from `PdfApplication`)</span>
 <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Clone</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfBuilder</span> {
     <span class='ident'>gs</span>: <span class='ident'>HashMap</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;static</span> <span class='ident'>str</span>, <span class='ident'>Cow</span><span class='op'>&lt;</span><span class='lifetime'>&#39;static</span>, <span class='ident'>str</span><span class='op'>&gt;&gt;</span>,
@@ -461,13 +503,6 @@
 }
 
 <span class='kw'>impl</span> <span class='ident'>PdfBuilder</span> {
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>() <span class='op'>-&gt;</span> <span class='ident'>PdfBuilder</span> {
-        <span class='ident'>PdfBuilder</span> {
-            <span class='ident'>gs</span>: <span class='ident'>HashMap</span>::<span class='ident'>new</span>(),
-            <span class='ident'>os</span>: <span class='ident'>HashMap</span>::<span class='ident'>new</span>(),
-        }
-    }
-
     <span class='doccomment'>/// The paper size of the output document (default A4)</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>page_size</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>page_size</span>: <span class='ident'>PageSize</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>PdfBuilder</span> {
         <span class='kw'>match</span> <span class='ident'>page_size</span> {
@@ -585,7 +620,7 @@
 
     <span class='doccomment'>/// Use the relevant settings to construct a low-level instance of `PdfGlobalSettings`</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>global_settings</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>PdfGlobalSettings</span><span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>global</span> <span class='op'>=</span> <span class='ident'>PdfGlobalSettings</span>::<span class='ident'>new</span>();
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>global</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>PdfGlobalSettings</span>::<span class='ident'>new</span>());
         <span class='kw'>for</span> (<span class='kw-2'>ref</span> <span class='ident'>name</span>, <span class='kw-2'>ref</span> <span class='ident'>val</span>) <span class='kw'>in</span> <span class='kw-2'>&amp;</span><span class='self'>self</span>.<span class='ident'>gs</span> {
             <span class='macro'>try</span><span class='macro'>!</span>( <span class='kw'>unsafe</span> { <span class='ident'>global</span>.<span class='ident'>set</span>(<span class='ident'>name</span>, <span class='kw-2'>&amp;</span><span class='ident'>val</span>) } );
         }
@@ -629,17 +664,22 @@
     <span class='kw'>use</span> <span class='kw'>super</span>::<span class='op'>*</span>;
 
     <span class='attribute'>#[<span class='ident'>test</span>]</span>
-    <span class='kw'>fn</span> <span class='ident'>basic_from_html</span>() {
+    <span class='kw'>fn</span> <span class='ident'>one_test_to_rule_them_all</span>() {
+        <span class='comment'>// Has to be a single test because PdfApplication can only be initialized once and is !Sync/!Send</span>
         <span class='kw'>let</span> _ <span class='op'>=</span> <span class='ident'>env_logger</span>::<span class='ident'>init</span>();
-        <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='ident'>PdfBuilder</span>::<span class='ident'>new</span>().<span class='ident'>build_from_html</span>(<span class='string'>&quot;basic &lt;b&gt;from&lt;/b&gt; html&quot;</span>);
-        <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>res</span>.<span class='ident'>is_ok</span>(), <span class='string'>&quot;{}&quot;</span>, <span class='ident'>res</span>.<span class='ident'>unwrap_err</span>());
-    }
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>pdf_app</span> <span class='op'>=</span> <span class='ident'>PdfApplication</span>::<span class='ident'>new</span>().<span class='ident'>expect</span>(<span class='string'>&quot;Failed to init PDF Application&quot;</span>);
 
-    <span class='attribute'>#[<span class='ident'>test</span>]</span>
-    <span class='kw'>fn</span> <span class='ident'>basic_from_url</span>() {
-        <span class='kw'>let</span> _ <span class='op'>=</span> <span class='ident'>env_logger</span>::<span class='ident'>init</span>();
-        <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='ident'>PdfBuilder</span>::<span class='ident'>new</span>().<span class='ident'>build_from_url</span>(<span class='string'>&quot;https://www.rust-lang.org/en-us/&quot;</span>.<span class='ident'>parse</span>().<span class='ident'>unwrap</span>());
-        <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>res</span>.<span class='ident'>is_ok</span>(), <span class='string'>&quot;{}&quot;</span>, <span class='ident'>res</span>.<span class='ident'>unwrap_err</span>());
+        {
+            <span class='comment'>// Test building PDF from HTML</span>
+            <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='ident'>pdf_app</span>.<span class='ident'>builder</span>().<span class='ident'>build_from_html</span>(<span class='string'>&quot;basic &lt;b&gt;from&lt;/b&gt; html&quot;</span>);
+            <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>res</span>.<span class='ident'>is_ok</span>(), <span class='string'>&quot;{}&quot;</span>, <span class='ident'>res</span>.<span class='ident'>unwrap_err</span>());
+        }
+
+        {
+            <span class='comment'>// Test building PDF from URL</span>
+            <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='ident'>pdf_app</span>.<span class='ident'>builder</span>().<span class='ident'>build_from_url</span>(<span class='string'>&quot;https://www.rust-lang.org/en-US/&quot;</span>.<span class='ident'>parse</span>().<span class='ident'>unwrap</span>());
+            <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>res</span>.<span class='ident'>is_ok</span>(), <span class='string'>&quot;{}&quot;</span>, <span class='ident'>res</span>.<span class='ident'>unwrap_err</span>());
+        }
     }
 }
 

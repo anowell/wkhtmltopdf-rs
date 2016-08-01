@@ -341,6 +341,66 @@
 <span id="297">297</span>
 <span id="298">298</span>
 <span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! Low-level wkhtmltopdf without the raw pointers</span>
 <span class='doccomment'>//!</span>
@@ -356,11 +416,24 @@
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>ffi</span>::{<span class='ident'>CString</span>, <span class='ident'>CStr</span>};
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>os</span>::<span class='ident'>raw</span>::{<span class='ident'>c_char</span>, <span class='ident'>c_int</span>};
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>sync</span>::{<span class='ident'>Arc</span>, <span class='ident'>Mutex</span>, <span class='ident'>mpsc</span>};
+<span class='kw'>use</span> <span class='ident'>thread_id</span>;
 <span class='kw'>use</span> <span class='kw'>super</span>::{<span class='prelude-ty'>Result</span>, <span class='ident'>Error</span>, <span class='ident'>PdfOutput</span>};
+
+<span class='kw'>enum</span> <span class='ident'>WkhtmltopdfState</span> {
+    <span class='comment'>// Wkhtmltopdf has not yet been initialized</span>
+    <span class='ident'>New</span>,
+    <span class='comment'>// Wkhtmltopdf backend is available for PDF generation</span>
+    <span class='ident'>Ready</span>,
+    <span class='comment'>// Wkhtmltopdf backend is busy, so attempts to init a `PdfGlobalSettings` instance will return `Error::Blocked`</span>
+    <span class='ident'>Busy</span>,
+    <span class='comment'>// Once dropped, wkthmltopdf cannot be used again for the life of this process</span>
+    <span class='ident'>Dropped</span>,
+}
 
 <span class='macro'>lazy_static</span><span class='macro'>!</span> {
     <span class='comment'>// Globally count wkhtmltopdf handles so we can safely init/deinit the underlying wkhtmltopdf singleton</span>
-    <span class='kw'>static</span> <span class='kw-2'>ref</span> <span class='ident'>WKHTMLTOPDF_GLOBAL_COUNT</span>: <span class='ident'>Mutex</span><span class='op'>&lt;</span><span class='ident'>u32</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>Mutex</span>::<span class='ident'>new</span>(<span class='number'>0</span>);
+    <span class='kw'>static</span> <span class='kw-2'>ref</span> <span class='ident'>WKHTMLTOPDF_STATE</span>: <span class='ident'>Mutex</span><span class='op'>&lt;</span><span class='ident'>WkhtmltopdfState</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>Mutex</span>::<span class='ident'>new</span>(<span class='ident'>WkhtmltopdfState</span>::<span class='ident'>New</span>);
+    <span class='kw'>static</span> <span class='kw-2'>ref</span> <span class='ident'>WKHTMLTOPDF_INIT_THREAD</span>: <span class='ident'>usize</span> <span class='op'>=</span> <span class='ident'>thread_id</span>::<span class='ident'>get</span>();
 
     <span class='comment'>// Globally track callbacks since wkhtmltopdf doesn&#39;t allow injecting any userdata</span>
     <span class='comment'>// The HashMap key is the converter&#39;s raw pointer cast as usize, so we can have unique callbacks per converter</span>
@@ -369,18 +442,32 @@
     <span class='comment'>// TODO: 3 more callback types</span>
 }
 
+<span class='doccomment'>/// Handles initialization and deinitialization of wkhtmltopdf</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// This struct may only be initialized once per process</span>
+<span class='doccomment'>///   which is [a fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// When it goes out of scope, wkhtmltopdf will be deinitialized</span>
+<span class='doccomment'>///   and further PDF generation will not be possible.</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfGuard</span> { <span class='ident'>_private</span>: () }
+<span class='kw'>impl</span> <span class='op'>!</span><span class='ident'>Send</span> <span class='kw'>for</span> <span class='ident'>PdfGuard</span> {}
+<span class='kw'>impl</span> <span class='op'>!</span><span class='ident'>Sync</span> <span class='kw'>for</span> <span class='ident'>PdfGuard</span> {}
+
+<span class='doccomment'>/// Safe wrapper for managing wkhtmltopdf global settings</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfGlobalSettings</span> {
     <span class='ident'>global_settings</span>: <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>wkhtmltopdf_global_settings</span>,
     <span class='comment'>// We only need to destroy global_settings if never consumed by wkhtmltopdf_create_converter</span>
     <span class='ident'>needs_delete</span>: <span class='ident'>bool</span>,
 }
 
+<span class='doccomment'>/// Safe wrapper for managing wkhtmltopdf object settings</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfObjectSettings</span> {
     <span class='ident'>object_settings</span>: <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>wkhtmltopdf_object_settings</span>,
     <span class='comment'>// We only need to destroy object_settings if never consumed by wkhtmltopdf_add_object</span>
     <span class='ident'>needs_delete</span>: <span class='ident'>bool</span>,
 }
 
+<span class='doccomment'>/// Safe wrapper for working with the wkhtmltopdf converter</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfConverter</span> {
     <span class='ident'>converter</span>: <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>wkhtmltopdf_converter</span>,
     <span class='comment'>// PdfGlobalSettings::drop also manages wkhtmktopdf_deinit, take ownership to delay drop</span>
@@ -388,37 +475,66 @@
 }
 
 
-<span class='kw'>impl</span> <span class='ident'>PdfGlobalSettings</span> {
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>() <span class='op'>-&gt;</span> <span class='ident'>PdfGlobalSettings</span> {
-        {
-            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>global_count</span> <span class='op'>=</span> <span class='ident'>WKHTMLTOPDF_GLOBAL_COUNT</span>.<span class='ident'>lock</span>().<span class='ident'>unwrap</span>();
-            <span class='kw'>if</span> <span class='op'>*</span><span class='ident'>global_count</span> <span class='op'>==</span> <span class='number'>0</span> {
-                <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_init graphics=0&quot;</span>);
-                <span class='kw'>let</span> <span class='ident'>success</span> <span class='op'>=</span> <span class='kw'>unsafe</span> {
-                    <span class='ident'>wkhtmltopdf_init</span>(<span class='number'>0</span>) <span class='op'>==</span> <span class='number'>1</span>
-                };
-                <span class='kw'>if</span> <span class='ident'>success</span> {
-                    <span class='op'>*</span><span class='ident'>global_count</span> <span class='op'>+=</span> <span class='number'>1</span>;
-                } <span class='kw'>else</span> {
-                    <span class='macro'>error</span><span class='macro'>!</span>(<span class='string'>&quot;failed to initialize wkhtmltopdf&quot;</span>);
-                }
+<span class='doccomment'>/// Initializes wkhtmltopdf</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// This function will only initialize wkhtmltopdf once per process</span>
+<span class='doccomment'>///   which is [a fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// Subsequent attempts to initialize wkhtmltopdf will return `Error:IllegalInit`</span>
+<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>pdf_init</span>() <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>PdfGuard</span><span class='op'>&gt;</span> {
+    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>wk_state</span> <span class='op'>=</span> <span class='ident'>WKHTMLTOPDF_STATE</span>.<span class='ident'>lock</span>().<span class='ident'>unwrap</span>();
+    <span class='kw'>match</span> <span class='op'>*</span><span class='ident'>wk_state</span> {
+        <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>New</span> <span class='op'>=&gt;</span> {
+            <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_init graphics=0&quot;</span>);
+            <span class='kw'>let</span> <span class='ident'>success</span> <span class='op'>=</span> <span class='kw'>unsafe</span> {
+                <span class='ident'>wkhtmltopdf_init</span>(<span class='number'>0</span>) <span class='op'>==</span> <span class='number'>1</span>
+            };
+            <span class='kw'>if</span> <span class='ident'>success</span> {
+                <span class='op'>*</span><span class='ident'>wk_state</span> <span class='op'>=</span> <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>Ready</span>;
+                <span class='comment'>// first eval of the lazy static - effectively stores the thread id</span>
+                <span class='kw'>let</span> _ <span class='op'>=</span> <span class='op'>*</span><span class='ident'>WKHTMLTOPDF_INIT_THREAD</span>;
             } <span class='kw'>else</span> {
-                <span class='op'>*</span><span class='ident'>global_count</span> <span class='op'>+=</span> <span class='number'>1</span>;
+                <span class='macro'>error</span><span class='macro'>!</span>(<span class='string'>&quot;failed to initialize wkhtmltopdf&quot;</span>);
             }
+            <span class='prelude-val'>Ok</span>(<span class='ident'>PdfGuard</span>{ <span class='ident'>_private</span>: () })
+        }
+        _ <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>Error</span>::<span class='ident'>IllegalInit</span>)
+    }
+}
+
+
+<span class='kw'>impl</span> <span class='ident'>PdfGlobalSettings</span> {
+    <span class='doccomment'>/// Instantiate PdfGlobalSettings</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// This may only be called after `pdf_init` has successfully initialized wkhtmltopdf</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>() <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>PdfGlobalSettings</span><span class='op'>&gt;</span> {
+        <span class='kw'>if</span> <span class='op'>*</span><span class='ident'>WKHTMLTOPDF_INIT_THREAD</span> <span class='op'>!=</span> <span class='ident'>thread_id</span>::<span class='ident'>get</span>() {
+            <span class='comment'>// A lot of QT functionality expects to run from the same thread that it was first initialized on</span>
+            <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>Error</span>::<span class='ident'>ThreadMismatch</span>(<span class='op'>*</span><span class='ident'>WKHTMLTOPDF_INIT_THREAD</span>, <span class='ident'>thread_id</span>::<span class='ident'>get</span>()))
         }
 
-        <span class='kw'>unsafe</span> {
-            <span class='ident'>PdfGlobalSettings</span> {
-                <span class='ident'>global_settings</span>: <span class='ident'>wkhtmltopdf_create_global_settings</span>(),
-                <span class='ident'>needs_delete</span>: <span class='bool-val'>true</span>,
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>wk_state</span> <span class='op'>=</span> <span class='ident'>WKHTMLTOPDF_STATE</span>.<span class='ident'>lock</span>().<span class='ident'>unwrap</span>();
+        <span class='kw'>match</span> <span class='op'>*</span><span class='ident'>wk_state</span> {
+            <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>New</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>Error</span>::<span class='ident'>NotInitialized</span>),
+            <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>Dropped</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>Error</span>::<span class='ident'>NotInitialized</span>),
+            <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>Busy</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>Error</span>::<span class='ident'>Blocked</span>),
+            <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>Ready</span> <span class='op'>=&gt;</span> {
+                <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_create_global_settings&quot;</span>);
+                <span class='kw'>let</span> <span class='ident'>gs</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>wkhtmltopdf_create_global_settings</span>() };
+                <span class='comment'>// TODO: is it possible to delay setting Busy until convert is called?</span>
+                <span class='op'>*</span><span class='ident'>wk_state</span> <span class='op'>=</span> <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>Busy</span>;
+                <span class='prelude-val'>Ok</span>(<span class='ident'>PdfGlobalSettings</span> {
+                    <span class='ident'>global_settings</span>: <span class='ident'>gs</span>,
+                    <span class='ident'>needs_delete</span>: <span class='bool-val'>true</span>,
+                })
             }
         }
     }
 
     <span class='comment'>// Unsafe as it may cause undefined behavior (generally segfault) if name or value are not valid</span>
     <span class='kw'>pub</span> <span class='kw'>unsafe</span> <span class='kw'>fn</span> <span class='ident'>set</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>name</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>, <span class='ident'>value</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>c_name</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>name</span>));
-        <span class='kw'>let</span> <span class='ident'>c_value</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>value</span>));
+        <span class='kw'>let</span> <span class='ident'>c_name</span> <span class='op'>=</span> <span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>name</span>).<span class='ident'>expect</span>(<span class='string'>&quot;setting name may not contain interior null bytes&quot;</span>);
+        <span class='kw'>let</span> <span class='ident'>c_value</span> <span class='op'>=</span> <span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>value</span>).<span class='ident'>expect</span>(<span class='string'>&quot;setting value may not contain interior null bytes&quot;</span>);
 
         <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_set_global_setting {}=&#39;{}&#39;&quot;</span>, <span class='ident'>name</span>, <span class='ident'>value</span>);
         <span class='kw'>match</span> <span class='ident'>wkhtmltopdf_set_global_setting</span>(<span class='self'>self</span>.<span class='ident'>global_settings</span>, <span class='ident'>c_name</span>.<span class='ident'>as_ptr</span>(), <span class='ident'>c_value</span>.<span class='ident'>as_ptr</span>()) {
@@ -548,8 +664,8 @@
     }
 
     <span class='kw'>pub</span> <span class='kw'>unsafe</span> <span class='kw'>fn</span> <span class='ident'>set</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>name</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>, <span class='ident'>value</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
-        <span class='kw'>let</span> <span class='ident'>c_name</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>name</span>));
-        <span class='kw'>let</span> <span class='ident'>c_value</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>value</span>));
+        <span class='kw'>let</span> <span class='ident'>c_name</span> <span class='op'>=</span> <span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>name</span>).<span class='ident'>expect</span>(<span class='string'>&quot;setting name may not contain interior null bytes&quot;</span>);
+        <span class='kw'>let</span> <span class='ident'>c_value</span> <span class='op'>=</span> <span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>value</span>).<span class='ident'>expect</span>(<span class='string'>&quot;setting value may not contain interior null bytes&quot;</span>);
 
         <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_set_object_setting {}=&#39;{}&#39;&quot;</span>, <span class='ident'>name</span>, <span class='ident'>value</span>);
         <span class='kw'>match</span> <span class='ident'>wkhtmltopdf_set_object_setting</span>(<span class='self'>self</span>.<span class='ident'>object_settings</span>, <span class='ident'>c_name</span>.<span class='ident'>as_ptr</span>(), <span class='ident'>c_value</span>.<span class='ident'>as_ptr</span>()) {
@@ -567,23 +683,6 @@
             <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_destroy_global_settings&quot;</span>);
             <span class='kw'>unsafe</span> { <span class='ident'>wkhtmltopdf_destroy_global_settings</span>(<span class='self'>self</span>.<span class='ident'>global_settings</span>); }
         }
-
-        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>global_count</span> <span class='op'>=</span> <span class='ident'>WKHTMLTOPDF_GLOBAL_COUNT</span>.<span class='ident'>lock</span>().<span class='ident'>unwrap</span>();
-        <span class='kw'>match</span> <span class='op'>*</span><span class='ident'>global_count</span> {
-            <span class='number'>0</span> <span class='op'>=&gt;</span> <span class='macro'>unreachable</span><span class='macro'>!</span>(<span class='string'>&quot;unsound attempt to deinitialize wkhtmlpdf&quot;</span>),
-            <span class='number'>1</span> <span class='op'>=&gt;</span> {
-                <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_deinit&quot;</span>);
-                <span class='kw'>let</span> <span class='ident'>success</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>wkhtmltopdf_deinit</span>() <span class='op'>==</span> <span class='number'>1</span> };
-                <span class='kw'>if</span> <span class='ident'>success</span> {
-                    <span class='op'>*</span><span class='ident'>global_count</span> <span class='op'>=</span> <span class='number'>0</span>;
-                } <span class='kw'>else</span> {
-                    <span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Failed to deinitialize wkhtmltopdf&quot;</span>)
-                }
-            },
-            _ <span class='op'>=&gt;</span> {
-                <span class='op'>*</span><span class='ident'>global_count</span> <span class='op'>-=</span> <span class='number'>1</span>;
-            }
-        }
     }
 }
 
@@ -599,6 +698,27 @@
         <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>needs_delete</span> {
             <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_destroy_object_settings&quot;</span>);
             <span class='kw'>unsafe</span> { <span class='ident'>wkhtmltopdf_destroy_object_settings</span>(<span class='self'>self</span>.<span class='ident'>object_settings</span>); }
+        }
+    }
+}
+
+<span class='comment'>// TODO: is it possible to revert to ready after convert finishes?</span>
+<span class='kw'>impl</span> <span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> <span class='ident'>Drop</span> <span class='kw'>for</span> <span class='ident'>PdfOutput</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> {
+    <span class='kw'>fn</span> <span class='ident'>drop</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) {
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>wk_state</span> <span class='op'>=</span> <span class='ident'>WKHTMLTOPDF_STATE</span>.<span class='ident'>lock</span>().<span class='ident'>unwrap</span>();
+        <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf ready again&quot;</span>);
+        <span class='op'>*</span><span class='ident'>wk_state</span> <span class='op'>=</span> <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>Ready</span>;
+    }
+}
+
+<span class='kw'>impl</span>  <span class='ident'>Drop</span> <span class='kw'>for</span> <span class='ident'>PdfGuard</span> {
+    <span class='kw'>fn</span> <span class='ident'>drop</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) {
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>wk_state</span> <span class='op'>=</span> <span class='ident'>WKHTMLTOPDF_STATE</span>.<span class='ident'>lock</span>().<span class='ident'>unwrap</span>();
+        <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_deinit&quot;</span>);
+        <span class='kw'>let</span> <span class='ident'>success</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>wkhtmltopdf_deinit</span>() <span class='op'>==</span> <span class='number'>1</span> };
+        <span class='op'>*</span><span class='ident'>wk_state</span> <span class='op'>=</span> <span class='ident'>WkhtmltopdfState</span>::<span class='ident'>Dropped</span>;
+        <span class='kw'>if</span> <span class='op'>!</span><span class='ident'>success</span> {
+            <span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Failed to deinitialize wkhtmltopdf&quot;</span>)
         }
     }
 }
