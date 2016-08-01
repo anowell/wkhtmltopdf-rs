@@ -3,7 +3,7 @@ High-level Rust bindings for wkhtmltopdf. This is a wrapper around the low-level
 
 Resource  | Link    
 ----- | -----
-Crate | [![Crates.io](https://img.shields.io/crates/v/rustc-serialize.svg?maxAge=2592000)](https://crates.io/crates/wkhtmltopdf)
+Crate | [![Crates.io](https://img.shields.io/crates/v/wkhtmltopdf.svg?maxAge=2592000)](https://crates.io/crates/wkhtmltopdf)
 Documentation | [Cargo docs](https://anowell.github.io/wkhtmltopdf-rs/wkhtmltopdf/)
 Upstream | [wkhtmltopdf.org](http://wkhtmltopdf.org/)
 
