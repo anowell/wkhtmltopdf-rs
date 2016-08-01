@@ -12,14 +12,24 @@ quick_error! {
             from()
         }
 
-        AlreadyInitialized {
-            description("wkhtmltopdf already initialized")
-            display("Wkhtmltopdf has already been initialized")
+        IllegalInit {
+            description("illegal initialization")
+            display("Wkhtmltopdf may not be initialized more than once per process")
         }
 
-        InitThreadMismatch(before: usize, after: usize) {
-            description("initialization thread mismatch")
-            display("Wkhtmltopdf QApplication originally started on thread {:0x}, cannot recreate on thread {:0x}", before, after)
+        NotInitialized {
+            description("not initialized")
+            display("Wkhtmltopdf is not currently initialized")
+        }
+
+        Blocked {
+            description("wkhtmltopdf blocked")
+            display("Wkhtmltopdf is currently blocked by another initialized instance")
+        }
+
+        ThreadMismatch(before: usize, after: usize) {
+            description("thread mismatch")
+            display("Wkhtmltopdf originally started on thread {:0x}, cannot recreate on thread {:0x}", before, after)
         }
 
         ConversionFailed(msg: String) {

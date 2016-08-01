@@ -7,6 +7,8 @@ use std::fs::File;
 
 fn main() {
     env_logger::init().unwrap();
+    let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+
     let html = r#"
         <html><body>
         <h1>Rust can haz PDFs</h1>
@@ -14,7 +16,7 @@ fn main() {
         </body></html>
     "#;
 
-    let mut settings = PdfBuilder::new();
+    let mut settings = pdf_app.builder();
     settings.orientation(Orientation::Landscape)
         .margin(Size::Millimeters(12))
         .title("PDFs for Rust");

@@ -1,3 +1,5 @@
+#![feature(optin_builtin_traits)]
+
 extern crate wkhtmltox_sys;
 extern crate url;
 extern crate thread_id;
@@ -107,6 +109,26 @@ impl From<(Size, Size, Size, Size)> for Margin {
     }
 }
 
+pub struct PdfApplication {
+    _guard: PdfGuard
+}
+
+impl PdfApplication {
+    pub fn new() -> Result<PdfApplication> {
+        pdf_init().map( |guard|
+            PdfApplication { _guard: guard }
+        )
+    }
+
+    // mutable reference allows compiler to ensure only one builder active at a time
+    pub fn builder(&mut self) -> PdfBuilder {
+        PdfBuilder {
+            gs: HashMap::new(),
+            os: HashMap::new(),
+        }
+    }
+}
+
 /// High-level builder for generating PDFs
 ///
 /// This builder
@@ -117,13 +139,6 @@ pub struct PdfBuilder {
 }
 
 impl PdfBuilder {
-    pub fn new() -> PdfBuilder {
-        PdfBuilder {
-            gs: HashMap::new(),
-            os: HashMap::new(),
-        }
-    }
-
     /// The paper size of the output document (default A4)
     pub fn page_size(&mut self, page_size: PageSize) -> &mut PdfBuilder {
         match page_size {
@@ -285,17 +300,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn basic_from_html() {
+    fn one_test_to_rule_them_all() {
+        // Has to be a single test because PdfApplication can only be initialized once and is !Sync/!Send
         let _ = env_logger::init();
-        let res = PdfBuilder::new().build_from_html("basic <b>from</b> html");
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-    }
+        let mut pdf_app = PdfApplication::new().expect("Failed to init PDF Application");
 
-    #[test]
-    fn basic_from_url() {
-        let _ = env_logger::init();
-        let res = PdfBuilder::new().build_from_url("https://www.rust-lang.org/en-us/".parse().unwrap());
-        assert!(res.is_ok(), "{}", res.unwrap_err());
+        {
+            // Test building PDF from HTML
+            let res = pdf_app.builder().build_from_html("basic <b>from</b> html");
+            assert!(res.is_ok(), "{}", res.unwrap_err());
+        }
+
+        {
+            // Test building PDF from URL
+            let res = pdf_app.builder().build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap());
+            assert!(res.is_ok(), "{}", res.unwrap_err());
+        }
     }
 }
 

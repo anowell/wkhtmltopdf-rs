@@ -15,9 +15,20 @@ use std::sync::{Arc, Mutex, mpsc};
 use thread_id;
 use super::{Result, Error, PdfOutput};
 
+enum WkhtmltopdfState {
+    // Wkhtmltopdf has not yet been initialized
+    New,
+    // Wkhtmltopdf backend is available for PDF generation
+    Ready,
+    // Wkhtmltopdf backend is busy, so attempts to init a `PdfGlobalSettings` instance will return `Error::Blocked`
+    Busy,
+    // Once dropped, wkthmltopdf cannot be used again for the life of this process
+    Dropped,
+}
+
 lazy_static! {
     // Globally count wkhtmltopdf handles so we can safely init/deinit the underlying wkhtmltopdf singleton
-    static ref WKHTMLTOPDF_IS_INITIALIZED: Mutex<bool> = Mutex::new(false);
+    static ref WKHTMLTOPDF_STATE: Mutex<WkhtmltopdfState> = Mutex::new(WkhtmltopdfState::New);
     static ref WKHTMLTOPDF_INIT_THREAD: usize = thread_id::get();
 
     // Globally track callbacks since wkhtmltopdf doesn't allow injecting any userdata
@@ -27,54 +38,93 @@ lazy_static! {
     // TODO: 3 more callback types
 }
 
+/// Handles initialization and deinitialization of wkhtmltopdf
+///
+/// This struct may only be initialized once per process
+///   which is [a fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).
+///
+/// When it goes out of scope, wkhtmltopdf will be deinitialized
+///   and further PDF generation will not be possible.
+pub struct PdfGuard { _private: () }
+impl !Send for PdfGuard {}
+impl !Sync for PdfGuard {}
+
+/// Safe wrapper for managing wkhtmltopdf global settings
 pub struct PdfGlobalSettings {
     global_settings: *mut wkhtmltopdf_global_settings,
     // We only need to destroy global_settings if never consumed by wkhtmltopdf_create_converter
     needs_delete: bool,
 }
 
+/// Safe wrapper for managing wkhtmltopdf object settings
 pub struct PdfObjectSettings {
     object_settings: *mut wkhtmltopdf_object_settings,
     // We only need to destroy object_settings if never consumed by wkhtmltopdf_add_object
     needs_delete: bool,
 }
 
+/// Safe wrapper for working with the wkhtmltopdf converter
 pub struct PdfConverter {
     converter: *mut wkhtmltopdf_converter,
     // PdfGlobalSettings::drop also manages wkhtmktopdf_deinit, take ownership to delay drop
     _global: PdfGlobalSettings,
 }
 
-impl PdfGlobalSettings {
-    pub fn new() -> Result<PdfGlobalSettings> {
-        if *WKHTMLTOPDF_INIT_THREAD != thread_id::get() {
-            // A lot of QT functionality expects to run from the same thread that it was first initialized on
-            return Err(Error::InitThreadMismatch(*WKHTMLTOPDF_INIT_THREAD, thread_id::get()))
-        }
 
-        {
-            let mut is_intialized = WKHTMLTOPDF_IS_INITIALIZED.lock().unwrap();
-            if *is_intialized {
-                return Err(Error::AlreadyInitialized)
-            }
-
+/// Initializes wkhtmltopdf
+///
+/// This function will only initialize wkhtmltopdf once per process
+///   which is [a fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).
+///
+/// Subsequent attempts to initialize wkhtmltopdf will return `Error:IllegalInit`
+pub fn pdf_init() -> Result<PdfGuard> {
+    let mut wk_state = WKHTMLTOPDF_STATE.lock().unwrap();
+    match *wk_state {
+        WkhtmltopdfState::New => {
             debug!("wkhtmltopdf_init graphics=0");
             let success = unsafe {
                 wkhtmltopdf_init(0) == 1
             };
             if success {
-                *is_intialized = true;
+                *wk_state = WkhtmltopdfState::Ready;
+                // first eval of the lazy static - effectively stores the thread id
+                let _ = *WKHTMLTOPDF_INIT_THREAD;
             } else {
                 error!("failed to initialize wkhtmltopdf");
             }
+            Ok(PdfGuard{ _private: () })
+        }
+        _ => Err(Error::IllegalInit)
+    }
+}
+
+
+impl PdfGlobalSettings {
+    /// Instantiate PdfGlobalSettings
+    ///
+    /// This may only be called after `pdf_init` has successfully initialized wkhtmltopdf
+    pub fn new() -> Result<PdfGlobalSettings> {
+        if *WKHTMLTOPDF_INIT_THREAD != thread_id::get() {
+            // A lot of QT functionality expects to run from the same thread that it was first initialized on
+            return Err(Error::ThreadMismatch(*WKHTMLTOPDF_INIT_THREAD, thread_id::get()))
         }
 
-        debug!("wkhtmltopdf_create_global_settings");
-        let gs = unsafe { wkhtmltopdf_create_global_settings() };
-        Ok(PdfGlobalSettings {
-            global_settings: gs,
-            needs_delete: true,
-        })
+        let mut wk_state = WKHTMLTOPDF_STATE.lock().unwrap();
+        match *wk_state {
+            WkhtmltopdfState::New => Err(Error::NotInitialized),
+            WkhtmltopdfState::Dropped => Err(Error::NotInitialized),
+            WkhtmltopdfState::Busy => Err(Error::Blocked),
+            WkhtmltopdfState::Ready => {
+                debug!("wkhtmltopdf_create_global_settings");
+                let gs = unsafe { wkhtmltopdf_create_global_settings() };
+                // TODO: is it possible to delay setting Busy until convert is called?
+                *wk_state = WkhtmltopdfState::Busy;
+                Ok(PdfGlobalSettings {
+                    global_settings: gs,
+                    needs_delete: true,
+                })
+            }
+        }
     }
 
     // Unsafe as it may cause undefined behavior (generally segfault) if name or value are not valid
@@ -229,19 +279,6 @@ impl Drop for PdfGlobalSettings {
             debug!("wkhtmltopdf_destroy_global_settings");
             unsafe { wkhtmltopdf_destroy_global_settings(self.global_settings); }
         }
-
-        let mut is_init = WKHTMLTOPDF_IS_INITIALIZED.lock().unwrap();
-        if !*is_init {
-            unreachable!("unsound attempt to deinitialize wkhtmlpdf")
-        }
-
-        debug!("wkhtmltopdf_deinit");
-        let success = unsafe { wkhtmltopdf_deinit() == 1 };
-        if success {
-            *is_init = false;
-        } else {
-            warn!("Failed to deinitialize wkhtmltopdf")
-        }
     }
 }
 
@@ -257,6 +294,27 @@ impl Drop for PdfObjectSettings {
         if self.needs_delete {
             debug!("wkhtmltopdf_destroy_object_settings");
             unsafe { wkhtmltopdf_destroy_object_settings(self.object_settings); }
+        }
+    }
+}
+
+// TODO: is it possible to revert to ready after convert finishes?
+impl <'a> Drop for PdfOutput<'a> {
+    fn drop(&mut self) {
+        let mut wk_state = WKHTMLTOPDF_STATE.lock().unwrap();
+        debug!("wkhtmltopdf ready again");
+        *wk_state = WkhtmltopdfState::Ready;
+    }
+}
+
+impl  Drop for PdfGuard {
+    fn drop(&mut self) {
+        let mut wk_state = WKHTMLTOPDF_STATE.lock().unwrap();
+        debug!("wkhtmltopdf_deinit");
+        let success = unsafe { wkhtmltopdf_deinit() == 1 };
+        *wk_state = WkhtmltopdfState::Dropped;
+        if !success {
+            warn!("Failed to deinitialize wkhtmltopdf")
         }
     }
 }

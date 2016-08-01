@@ -34,8 +34,10 @@ As long as the includes are installed (e.g. `pdf.h`), then it's all cargo:
 
 ```
 cargo build
+cargo test
 ```
 
-`cargo test` is sorta blocked by Issue #1.
+Note: tests have to be combined into a single test case because we can only init `PdfApplication` once, and it is `!Send`/`!Sync`.
+So the preference going forward will be to test with lots of good examples.
 
 **Contributions welcome in the form of issue reports, feature requests, feedback, and/or pull request.**
