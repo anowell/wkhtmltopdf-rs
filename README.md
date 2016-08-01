@@ -3,6 +3,19 @@ High-level Rust bindings for wkhtmltopdf. This is a wrapper around the low-level
 
 [Documentation](https://anowell.github.io/wkhtmltopdf-rs/wkhtmltopdf/)
 
+-----
+
+This crate aims to provide full configuration of wkhtmltopdf with safe, ergonomic Rust.
+Wkhtmltopdf has several non-obvious limitations (mostly caused by Qt).
+that make it very easy to cause undefined behavior with the C bindings.
+Two such limitations that greatly impact the API are:
+
+1. Wkhtmltopdf initialization can only occur once per process; deinitialization does make it safe to reuse
+2. PDF generation must always occur on the thread that initialized wkhtmltopdf
+
+This crate should make it impossible to break those rules in safe code. If you need parallel PDF generation,
+you will need to spawn/fork processes to do so. Such an abstraction would be a welcome addition to this crate.
+
 ## Install
 
 Install [wkhtmltopdf](http://wkhtmltopdf.org/downloads.html) 0.12.3 (libs and includes).
@@ -17,7 +30,8 @@ Basic usage looks like this:
 
 ```rust
   let html = r#"<html><body><div>foo</div></body></html>"#;
-  let mut pdfout = PdfBuilder::new()
+  let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+  let mut pdfout = pdf_app.builder()
       .orientation(Orientation::Landscape)
       .margin(Size::Inches(2))
       .title("Awesome Foo")
