@@ -109,6 +109,7 @@ impl From<(Size, Size, Size, Size)> for Margin {
     }
 }
 
+/// Structure for initializing the underlying wkhtmltopdf
 pub struct PdfApplication {
     _guard: PdfGuard
 }
@@ -129,9 +130,7 @@ impl PdfApplication {
     }
 }
 
-/// High-level builder for generating PDFs
-///
-/// This builder
+/// High-level builder for generating PDFs (initialized from `PdfApplication`)
 #[derive(Clone)]
 pub struct PdfBuilder {
     gs: HashMap<&'static str, Cow<'static, str>>,
