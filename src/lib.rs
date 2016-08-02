@@ -236,7 +236,7 @@ impl PdfBuilder {
     /// # use wkhtmltopdf::PdfApplication;
     /// let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
     /// let mut pdfout = pdf_app.builder()
-    ///        .build_from_path("https://www.rust-lang.org/en-US/".parse().unwrap())
+    ///        .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap())
     ///        .expect("failed to build pdf");
     /// ```
     ///
@@ -244,10 +244,9 @@ impl PdfBuilder {
     ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_url<'a, 'b>(&'a mut self, url: Url) -> Result<PdfOutput<'b>> {
         let global = try!(self.global_settings());
-        let mut object = try!(self.object_settings());
+        let object = try!(self.object_settings());
         let mut converter = global.create_converter();
-        try!( unsafe { object.set("page", url.as_str()) } );
-        converter.add_page_object(object);
+        converter.add_page_object(object, url.as_str());
         converter.convert()
     }
 
@@ -266,10 +265,9 @@ impl PdfBuilder {
     ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_path<'a, 'b, P: AsRef<Path>>(&'a mut self, path: P) -> Result<PdfOutput<'b>> {
         let global = try!(self.global_settings());
-        let mut object = try!(self.object_settings());
+        let object = try!(self.object_settings());
         let mut converter = global.create_converter();
-        try!( unsafe { object.set("page", &path.as_ref().to_string_lossy()) } );
-        converter.add_page_object(object);
+        converter.add_page_object(object, &path.as_ref().to_string_lossy());
         converter.convert()
     }
 

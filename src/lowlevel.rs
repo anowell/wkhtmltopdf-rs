@@ -160,16 +160,24 @@ impl PdfGlobalSettings {
 
 
 impl PdfConverter {
-    pub fn add_page_object(&mut self, mut pdf_object: PdfObjectSettings) {
-        let null: *const c_char = ptr::null();
+    /// Adds a page object to the PDF by URL or local path to the page
+    ///
+    /// This method will set/override the `page` object setting.
+    pub fn add_page_object(&mut self, mut pdf_object: PdfObjectSettings, page: &str) {
+        unsafe { pdf_object.set("page", page).expect("Failed to set 'page' setting"); }
 
         debug!("wkhtmltopdf_add_object data=NULL");
         unsafe {
-            wkhtmltopdf_add_object(self.converter, pdf_object.object_settings, null);
+            wkhtmltopdf_add_object(self.converter, pdf_object.object_settings, ptr::null());
         };
         pdf_object.needs_delete = false;
     }
 
+    /// Adds a page object to the PDF using provided HTML data
+    ///
+    /// In general, this will result in ignoring the 'page' setting if added to this `pdf_object`.
+    ///   The exception is when `html` is an empty string, but `app_page_object` should be
+    ///   the preferred way to set the `page` setting.
     pub fn add_html_object(&mut self, mut pdf_object: PdfObjectSettings, html: &str) {
         let c_html = CString::new(html).expect("null byte found");
 
@@ -180,6 +188,11 @@ impl PdfConverter {
         pdf_object.needs_delete = false;
     }
 
+    /// Performs the HTML to PDF conversion
+    ///
+    /// This method does not do any additional allocations of the output,
+    ///   so the `PdfConverter` will be owned by `PdfOutput` so that
+    ///   it is not dropped until the `PdfOutput` is dropped.
     pub fn convert<'a>(self) -> Result<PdfOutput<'a>> {
         let rx = self.setup_callbacks();
         debug!("wkhtmltopdf_convert");
