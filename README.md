@@ -1,7 +1,7 @@
 # wkhtmltopdf-rs
 High-level Rust bindings for wkhtmltopdf. This is a wrapper around the low-level binding provided by [libwkhtmltox-sys](https://github.com/anowell/libwkhtmltox-sys).
 
-Resource  | Link    
+Resource  | Link
 ----- | -----
 Crate | [![Crates.io](https://img.shields.io/crates/v/wkhtmltopdf.svg?maxAge=2592000)](https://crates.io/crates/wkhtmltopdf)
 Documentation | [Cargo docs](https://anowell.github.io/wkhtmltopdf-rs/wkhtmltopdf/)
@@ -22,11 +22,10 @@ you will need to spawn/fork processes to do so. Such an abstraction would be a w
 
 ## Install
 
-Install [wkhtmltopdf](http://wkhtmltopdf.org/downloads.html) 0.12.3 (libs and includes).
+Install [wkhtmltopdf](http://wkhtmltopdf.org/downloads.html) 0.12.3.
 
-TODO: Add platform-relevant instructions to replace these manual install:
-- `lib/*.so` files to /usr/lib
-- `include/wkhtmltopdf` dir to `/usr/include/wkhtmltopdf`
+Note: This library using the `libs` (shared objects) and `includes` (headers)
+  for PDF generation instead of the wkhtmltopdf executable.
 
 ## Usage
 
@@ -56,6 +55,6 @@ cargo test
 ```
 
 Note: tests have to be combined into a single test case because we can only init `PdfApplication` once, and it is `!Send`/`!Sync`.
-So the preference going forward will be to test with lots of good examples.
+So the preference going forward will be to test with a variety of good examples.
 
 **Contributions welcome in the form of issue reports, feature requests, feedback, and/or pull request.**
