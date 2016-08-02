@@ -1,5 +1,3 @@
-#![feature(optin_builtin_traits)]
-
 extern crate wkhtmltox_sys;
 extern crate url;
 extern crate thread_id;
@@ -153,6 +151,9 @@ impl PdfBuilder {
     }
 
     /// Size of the page margins (default 10mm on all sides)
+    ///
+    /// Note: `Into<Margin>` is also implement for tuples of Margin elements
+    ///   to provide CSS-like shorthand for setting each margin
     pub fn margin<M: Into<Margin>>(&mut self, margin: M) -> &mut PdfBuilder {
         let m = margin.into();
         self.gs.insert("margin.top", m.top.value().into());
@@ -190,17 +191,30 @@ impl PdfBuilder {
         self
     }
 
-    /// Enabled generating an outline (table of contents) in the sidebar with a specified depth
-    pub fn outline(&mut self, outline_depth: u32) -> &mut PdfBuilder {
-        self.gs.insert("outline", "true".into());
-        self.gs.insert("outlineDepth", outline_depth.to_string().into());
+    /// Enabled generating an outline (table of contents) in the sidebar with a specified depth (default 4)
+    ///
+    /// Note: despite being a documented in wkhtmltopdf, the outline depth is not currently configurable
+    ///   due to [this upstream issue](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/3055).
+    ///   However, it can enable and disable the outline, and when the upstream issue is resolved,
+    ///   this method will be updated to also set the outline depth.
+    pub fn outline(&mut self, outline_depth: Option<u32>) -> &mut PdfBuilder {
+        match outline_depth {
+            Some(_depth) => {
+                self.gs.insert("outline", "true".into());
+                // Uncomment when upstream 3055 is resolved
+                // self.gs.insert("outlineDepth", depth.to_string().into());
+            },
+            None => {
+                self.gs.insert("outline", "false".into());
+            }
+        }
         self
     }
 
     /// Set a global setting not explicitly supported by the PdfBuilder
     ///
-    /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior (e.g. segfault)
-    ///   when generating the PdfGlobalSetting object
+    /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior
+    //    (e.g. segfault) in later calls.
     pub unsafe fn global_setting<S: Into<Cow<'static, str>>>(&mut self, name: &'static str, value: S) -> &mut PdfBuilder {
         self.gs.insert(name, value.into());
         self
@@ -208,14 +222,23 @@ impl PdfBuilder {
 
     /// Set an object setting not explicitly supported by the PdfBuilder
     ///
-    /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior (e.g. segfault)
-    ///   when generating the PdfObjectSetting object
+    /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior
+    //    (e.g. segfault) in later calls.
     pub unsafe fn object_setting<S: Into<Cow<'static, str>>>(&mut self, name: &'static str, value: S) -> &mut PdfBuilder {
         self.os.insert(name, value.into());
         self
     }
 
     /// Build a PDF using a URL as the source input
+    ///
+    /// ## Example
+    /// ```no_run
+    /// # use wkhtmltopdf::PdfApplication;
+    /// let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+    /// let mut pdfout = pdf_app.builder()
+    ///        .build_from_path("https://www.rust-lang.org/en-US/".parse().unwrap())
+    ///        .expect("failed to build pdf");
+    /// ```
     ///
     /// This method should be safe if using only safe builder methods, or if usage
     ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
@@ -230,6 +253,15 @@ impl PdfBuilder {
 
     /// Build a PDF using the provided HTML from a local file
     ///
+    /// ## Example
+    /// ```no_run
+    /// # use wkhtmltopdf::PdfApplication;
+    /// let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+    /// let mut pdfout = pdf_app.builder()
+    ///        .build_from_path("/path/to/static/index.html")
+    ///        .expect("failed to build pdf");
+    /// ```
+    ///
     /// This method should be safe if using only safe builder methods, or if usage
     ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_path<'a, 'b, P: AsRef<Path>>(&'a mut self, path: P) -> Result<PdfOutput<'b>> {
@@ -242,6 +274,16 @@ impl PdfBuilder {
     }
 
     /// Build a PDF using the provided HTML source input
+    ///
+    /// ## Example
+    /// ```no_run
+    /// # use wkhtmltopdf::PdfApplication;
+    /// let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+    /// let html = r#"foo<b>bar</b>"#;
+    /// let mut pdfout = pdf_app.builder()
+    ///        .build_from_html(&html)
+    ///        .expect("failed to build pdf");
+    /// ```
     ///
     /// This method should be safe if using only safe builder methods, or if usage
     ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf

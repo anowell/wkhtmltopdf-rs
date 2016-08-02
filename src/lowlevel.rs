@@ -12,7 +12,9 @@ use std::collections::HashMap;
 use std::ffi::{CString, CStr};
 use std::os::raw::{c_char, c_int};
 use std::sync::{Arc, Mutex, mpsc};
+use std::marker::PhantomData;
 use thread_id;
+
 use super::{Result, Error, PdfOutput};
 
 enum WkhtmltopdfState {
@@ -45,9 +47,11 @@ lazy_static! {
 ///
 /// When it goes out of scope, wkhtmltopdf will be deinitialized
 ///   and further PDF generation will not be possible.
-pub struct PdfGuard { _private: () }
-impl !Send for PdfGuard {}
-impl !Sync for PdfGuard {}
+pub struct PdfGuard {
+    // Private to prevent struct construction
+    // PhantomData<*const ()> to effectively impl !Send and !Sync on stable
+    _private: PhantomData<*const ()>
+}
 
 /// Safe wrapper for managing wkhtmltopdf global settings
 pub struct PdfGlobalSettings {
@@ -92,7 +96,7 @@ pub fn pdf_init() -> Result<PdfGuard> {
             } else {
                 error!("failed to initialize wkhtmltopdf");
             }
-            Ok(PdfGuard{ _private: () })
+            Ok(PdfGuard{ _private: PhantomData })
         }
         _ => Err(Error::IllegalInit)
     }
