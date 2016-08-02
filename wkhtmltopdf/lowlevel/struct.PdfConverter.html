@@ -47,15 +47,28 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-82' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#67-71' title='goto source code'>[src]</a></span></h1>
+               </span><a id='src-81' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#71-75' title='goto source code'>[src]</a></span></h1>
 <pre class='rust struct'>pub struct PdfConverter {
     // some fields omitted
 }</pre><div class='docblock'><p>Safe wrapper for working with the wkhtmltopdf converter</p>
-</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfConverter.html' title='wkhtmltopdf::lowlevel::PdfConverter'>PdfConverter</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-121' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#158-251' title='goto source code'>[src]</a></span></h3>
-<div class='impl-items'><h4 id='method.add_page_object' class='method'><code>fn <a href='#method.add_page_object' class='fnname'>add_page_object</a>(&amp;mut self, pdf_object: <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfObjectSettings.html' title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a>)</code></h4>
-<h4 id='method.add_html_object' class='method'><code>fn <a href='#method.add_html_object' class='fnname'>add_html_object</a>(&amp;mut self, pdf_object: <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfObjectSettings.html' title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a>, html: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>)</code></h4>
-<h4 id='method.convert' class='method'><code>fn <a href='#method.convert' class='fnname'>convert</a>&lt;'a&gt;(self) -&gt; <a class='type' href='../../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../../wkhtmltopdf/struct.PdfOutput.html' title='wkhtmltopdf::PdfOutput'>PdfOutput</a>&lt;'a&gt;&gt;</code></h4>
-</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfConverter.html' title='wkhtmltopdf::lowlevel::PdfConverter'>PdfConverter</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-208' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#285-290' title='goto source code'>[src]</a></span></h3>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfConverter.html' title='wkhtmltopdf::lowlevel::PdfConverter'>PdfConverter</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-120' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#164-270' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.add_page_object' class='method'><code>fn <a href='#method.add_page_object' class='fnname'>add_page_object</a>(&amp;mut self, pdf_object: <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfObjectSettings.html' title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a>, page: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>)</code></h4>
+<div class='docblock'><p>Adds a page object to the PDF by URL or local path to the page</p>
+
+<p>This method will set/override the <code>page</code> object setting.</p>
+</div><h4 id='method.add_html_object' class='method'><code>fn <a href='#method.add_html_object' class='fnname'>add_html_object</a>(&amp;mut self, pdf_object: <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfObjectSettings.html' title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a>, html: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>)</code></h4>
+<div class='docblock'><p>Adds a page object to the PDF using provided HTML data</p>
+
+<p>In general, this will result in ignoring the &#39;page&#39; setting if added to this <code>pdf_object</code>.
+  The exception is when <code>html</code> is an empty string, but <code>app_page_object</code> should be
+  the preferred way to set the <code>page</code> setting.</p>
+</div><h4 id='method.convert' class='method'><code>fn <a href='#method.convert' class='fnname'>convert</a>&lt;'a&gt;(self) -&gt; <a class='type' href='../../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../../wkhtmltopdf/struct.PdfOutput.html' title='wkhtmltopdf::PdfOutput'>PdfOutput</a>&lt;'a&gt;&gt;</code></h4>
+<div class='docblock'><p>Performs the HTML to PDF conversion</p>
+
+<p>This method does not do any additional allocations of the output,
+  so the <code>PdfConverter</code> will be owned by <code>PdfOutput</code> so that
+  it is not dropped until the <code>PdfOutput</code> is dropped.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfConverter.html' title='wkhtmltopdf::lowlevel::PdfConverter'>PdfConverter</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-207' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#304-309' title='goto source code'>[src]</a></span></h3>
 <div class='impl-items'><h4 id='method.drop' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></h4>
 <div class='docblock'><p>A method called when the value goes out of scope. <a href="https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop">Read more</a></p>
 </div></div></section>

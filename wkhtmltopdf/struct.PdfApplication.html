@@ -47,14 +47,29 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-550' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#113-115' title='goto source code'>[src]</a></span></h1>
+               </span><a id='src-549' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#146-148' title='goto source code'>[src]</a></span></h1>
 <pre class='rust struct'>pub struct PdfApplication {
     // some fields omitted
 }</pre><div class='docblock'><p>Structure for initializing the underlying wkhtmltopdf</p>
-</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../wkhtmltopdf/struct.PdfApplication.html' title='wkhtmltopdf::PdfApplication'>PdfApplication</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-552' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#117-131' title='goto source code'>[src]</a></span></h3>
+
+<p>This is effective a wrapper around <code>PdfGuard</code> that provides
+a method for instantiating one a builder</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../wkhtmltopdf/struct.PdfApplication.html' title='wkhtmltopdf::PdfApplication'>PdfApplication</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-551' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#150-175' title='goto source code'>[src]</a></span></h3>
 <div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; <a class='type' href='../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../wkhtmltopdf/struct.PdfApplication.html' title='wkhtmltopdf::PdfApplication'>PdfApplication</a>&gt;</code></h4>
-<h4 id='method.builder' class='method'><code>fn <a href='#method.builder' class='fnname'>builder</a>(&amp;mut self) -&gt; <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
-</div></section>
+<div class='docblock'><p>Initializes Wkhtmltopdf</p>
+
+<p>Wkhtmltopdf will remain initialized for this process until <code>PdfApplication</code> is dropped.
+Wkhtmltopdf may only be initialized once per process, and
+and all PDF generation must happen from the same thread that initialized wkhtmltopdf.</p>
+
+<p>Subsequent attempts to initialize wkhtmltopdf will return <code>Error:IllegalInit</code>.</p>
+</div><h4 id='method.builder' class='method'><code>fn <a href='#method.builder' class='fnname'>builder</a>(&amp;mut self) -&gt; <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
+<div class='docblock'><p>Instantiate a <code>PdfBuilder</code></p>
+
+<p>This method borrows the <code>self</code> mutably to ensure only that one builder is active at a time which is a
+<a href="https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1711">basic limitation of wkhtmltopdf</a>.
+Parallel execution is currently only possible by spawning multiple processes.</p>
+</div></div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>

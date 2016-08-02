@@ -47,15 +47,18 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-563' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#135-138' title='goto source code'>[src]</a></span></h1>
+               </span><a id='src-562' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#179-182' title='goto source code'>[src]</a></span></h1>
 <pre class='rust struct'>pub struct PdfBuilder {
     // some fields omitted
 }</pre><div class='docblock'><p>High-level builder for generating PDFs (initialized from <code>PdfApplication</code>)</p>
-</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-566' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#140-273' title='goto source code'>[src]</a></span></h3>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-565' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#184-359' title='goto source code'>[src]</a></span></h3>
 <div class='impl-items'><h4 id='method.page_size' class='method'><code>fn <a href='#method.page_size' class='fnname'>page_size</a>(&amp;mut self, page_size: <a class='enum' href='../wkhtmltopdf/enum.PageSize.html' title='wkhtmltopdf::PageSize'>PageSize</a>) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
 <div class='docblock'><p>The paper size of the output document (default A4)</p>
 </div><h4 id='method.margin' class='method'><code>fn <a href='#method.margin' class='fnname'>margin</a>&lt;M:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.Into.html' title='core::convert::Into'>Into</a>&lt;<a class='struct' href='../wkhtmltopdf/struct.Margin.html' title='wkhtmltopdf::Margin'>Margin</a>&gt;&gt;(&amp;mut self, margin: M) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
 <div class='docblock'><p>Size of the page margins (default 10mm on all sides)</p>
+
+<p>Note: <code>Into&lt;Margin&gt;</code> is also implement for tuples of Margin elements
+  to provide CSS-like shorthand for setting each margin</p>
 </div><h4 id='method.orientation' class='method'><code>fn <a href='#method.orientation' class='fnname'>orientation</a>(&amp;mut self, orientation: <a class='enum' href='../wkhtmltopdf/enum.Orientation.html' title='wkhtmltopdf::Orientation'>Orientation</a>) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
 <div class='docblock'><p>The orientation of the output document (default portrait)</p>
 </div><h4 id='method.dpi' class='method'><code>fn <a href='#method.dpi' class='fnname'>dpi</a>(&amp;mut self, dpi: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
@@ -64,38 +67,63 @@
 <div class='docblock'><p>JPEG image compression quality in percentage (default 94)</p>
 </div><h4 id='method.title' class='method'><code>fn <a href='#method.title' class='fnname'>title</a>(&amp;mut self, title: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
 <div class='docblock'><p>Title of the output document (default none)</p>
-</div><h4 id='method.outline' class='method'><code>fn <a href='#method.outline' class='fnname'>outline</a>(&amp;mut self, outline_depth: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
-<div class='docblock'><p>Enabled generating an outline (table of contents) in the sidebar with a specified depth</p>
+</div><h4 id='method.outline' class='method'><code>fn <a href='#method.outline' class='fnname'>outline</a>(&amp;mut self, outline_depth: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt;) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
+<div class='docblock'><p>Enabled generating an outline (table of contents) in the sidebar with a specified depth (default 4)</p>
+
+<p>Note: despite being a documented in wkhtmltopdf, the outline depth is not currently configurable
+  due to <a href="https://github.com/wkhtmltopdf/wkhtmltopdf/issues/3055">this upstream issue</a>.
+  However, it can enable and disable the outline, and when the upstream issue is resolved,
+  this method will be updated to also set the outline depth.</p>
 </div><h4 id='method.global_setting' class='method'><code>unsafe fn <a href='#method.global_setting' class='fnname'>global_setting</a>&lt;S:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.Into.html' title='core::convert::Into'>Into</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/collections/borrow/enum.Cow.html' title='collections::borrow::Cow'>Cow</a>&lt;'static,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;&gt;&gt;(&amp;mut self, name: &amp;'static <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, value: S) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
 <div class='docblock'><p>Set a global setting not explicitly supported by the PdfBuilder</p>
 
-<p>Unsafe because values not supported by wkhtmltopdf can cause undefined behavior (e.g. segfault)
-  when generating the PdfGlobalSetting object</p>
+<p>Unsafe because values not supported by wkhtmltopdf can cause undefined behavior</p>
 </div><h4 id='method.object_setting' class='method'><code>unsafe fn <a href='#method.object_setting' class='fnname'>object_setting</a>&lt;S:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.Into.html' title='core::convert::Into'>Into</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/collections/borrow/enum.Cow.html' title='collections::borrow::Cow'>Cow</a>&lt;'static,&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;&gt;&gt;(&amp;mut self, name: &amp;'static <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, value: S) -&gt; &amp;mut <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
 <div class='docblock'><p>Set an object setting not explicitly supported by the PdfBuilder</p>
 
-<p>Unsafe because values not supported by wkhtmltopdf can cause undefined behavior (e.g. segfault)
-  when generating the PdfObjectSetting object</p>
+<p>Unsafe because values not supported by wkhtmltopdf can cause undefined behavior</p>
 </div><h4 id='method.build_from_url' class='method'><code>fn <a href='#method.build_from_url' class='fnname'>build_from_url</a>&lt;'a,&nbsp;'b&gt;(&amp;'a mut self, url: Url) -&gt; <a class='type' href='../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../wkhtmltopdf/struct.PdfOutput.html' title='wkhtmltopdf::PdfOutput'>PdfOutput</a>&lt;'b&gt;&gt;</code></h4>
 <div class='docblock'><p>Build a PDF using a URL as the source input</p>
 
+<h2 id='example' class='section-header'><a href='#example'>Example</a></h2>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>pdf_app</span> <span class='op'>=</span> <span class='ident'>PdfApplication</span>::<span class='ident'>new</span>().<span class='ident'>expect</span>(<span class='string'>&quot;Failed to init PDF application&quot;</span>);
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>pdfout</span> <span class='op'>=</span> <span class='ident'>pdf_app</span>.<span class='ident'>builder</span>()
+       .<span class='ident'>build_from_url</span>(<span class='string'>&quot;https://www.rust-lang.org/en-US/&quot;</span>.<span class='ident'>parse</span>().<span class='ident'>unwrap</span>())
+       .<span class='ident'>expect</span>(<span class='string'>&quot;failed to build pdf&quot;</span>);</pre>
+
 <p>This method should be safe if using only safe builder methods, or if usage
-   of <code>unsafe</code> methods (e.g. adding custom settings) is properly handled by wkhtmltopdf</p>
+of <code>unsafe</code> methods (e.g. adding custom settings) is properly handled by wkhtmltopdf</p>
 </div><h4 id='method.build_from_path' class='method'><code>fn <a href='#method.build_from_path' class='fnname'>build_from_path</a>&lt;'a,&nbsp;'b,&nbsp;P:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html' title='core::convert::AsRef'>AsRef</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/std/path/struct.Path.html' title='std::path::Path'>Path</a>&gt;&gt;(&amp;'a mut self, path: P) -&gt; <a class='type' href='../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../wkhtmltopdf/struct.PdfOutput.html' title='wkhtmltopdf::PdfOutput'>PdfOutput</a>&lt;'b&gt;&gt;</code></h4>
 <div class='docblock'><p>Build a PDF using the provided HTML from a local file</p>
 
+<h2 id='example-1' class='section-header'><a href='#example-1'>Example</a></h2>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>pdf_app</span> <span class='op'>=</span> <span class='ident'>PdfApplication</span>::<span class='ident'>new</span>().<span class='ident'>expect</span>(<span class='string'>&quot;Failed to init PDF application&quot;</span>);
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>pdfout</span> <span class='op'>=</span> <span class='ident'>pdf_app</span>.<span class='ident'>builder</span>()
+       .<span class='ident'>build_from_path</span>(<span class='string'>&quot;/path/to/static/index.html&quot;</span>)
+       .<span class='ident'>expect</span>(<span class='string'>&quot;failed to build pdf&quot;</span>);</pre>
+
 <p>This method should be safe if using only safe builder methods, or if usage
-   of <code>unsafe</code> methods (e.g. adding custom settings) is properly handled by wkhtmltopdf</p>
+of <code>unsafe</code> methods (e.g. adding custom settings) is properly handled by wkhtmltopdf</p>
 </div><h4 id='method.build_from_html' class='method'><code>fn <a href='#method.build_from_html' class='fnname'>build_from_html</a>&lt;'a,&nbsp;'b,&nbsp;S:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html' title='core::convert::AsRef'>AsRef</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;&gt;(&amp;'a mut self, html: S) -&gt; <a class='type' href='../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../wkhtmltopdf/struct.PdfOutput.html' title='wkhtmltopdf::PdfOutput'>PdfOutput</a>&lt;'b&gt;&gt;</code></h4>
 <div class='docblock'><p>Build a PDF using the provided HTML source input</p>
 
+<h2 id='example-2' class='section-header'><a href='#example-2'>Example</a></h2>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>pdf_app</span> <span class='op'>=</span> <span class='ident'>PdfApplication</span>::<span class='ident'>new</span>().<span class='ident'>expect</span>(<span class='string'>&quot;Failed to init PDF application&quot;</span>);
+<span class='kw'>let</span> <span class='ident'>html</span> <span class='op'>=</span> <span class='string'>r#&quot;foo&lt;b&gt;bar&lt;/b&gt;&quot;#</span>;
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>pdfout</span> <span class='op'>=</span> <span class='ident'>pdf_app</span>.<span class='ident'>builder</span>()
+       .<span class='ident'>build_from_html</span>(<span class='kw-2'>&amp;</span><span class='ident'>html</span>)
+       .<span class='ident'>expect</span>(<span class='string'>&quot;failed to build pdf&quot;</span>);</pre>
+
 <p>This method should be safe if using only safe builder methods, or if usage
-   of <code>unsafe</code> methods (e.g. adding custom settings) is properly handled by wkhtmltopdf</p>
+of <code>unsafe</code> methods (e.g. adding custom settings) is properly handled by wkhtmltopdf</p>
 </div><h4 id='method.global_settings' class='method'><code>fn <a href='#method.global_settings' class='fnname'>global_settings</a>(&amp;self) -&gt; <a class='type' href='../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../wkhtmltopdf/lowlevel/struct.PdfGlobalSettings.html' title='wkhtmltopdf::lowlevel::PdfGlobalSettings'>PdfGlobalSettings</a>&gt;</code></h4>
 <div class='docblock'><p>Use the relevant settings to construct a low-level instance of <code>PdfGlobalSettings</code></p>
 </div><h4 id='method.object_settings' class='method'><code>fn <a href='#method.object_settings' class='fnname'>object_settings</a>(&amp;self) -&gt; <a class='type' href='../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../wkhtmltopdf/lowlevel/struct.PdfObjectSettings.html' title='wkhtmltopdf::lowlevel::PdfObjectSettings'>PdfObjectSettings</a>&gt;</code></h4>
 <div class='docblock'><p>Use the relevant settings to construct a low-level instance of <code>PdfObjectSettings</code></p>
-</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-558' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#134' title='goto source code'>[src]</a></span></h3>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-557' class='srclink' href='../src/wkhtmltopdf/src/lib.rs.html#178' title='goto source code'>[src]</a></span></h3>
 <div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../wkhtmltopdf/struct.PdfBuilder.html' title='wkhtmltopdf::PdfBuilder'>PdfBuilder</a></code></h4>
 <div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
 </div><h4 id='method.clone_from' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div></h4>

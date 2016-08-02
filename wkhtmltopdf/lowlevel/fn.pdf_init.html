@@ -47,11 +47,13 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-85' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#80-99' title='goto source code'>[src]</a></span></h1>
+               </span><a id='src-84' class='srclink' href='../../src/wkhtmltopdf/src/lowlevel.rs.html#86-105' title='goto source code'>[src]</a></span></h1>
 <pre class='rust fn'>pub fn pdf_init() -&gt; <a class='type' href='../../wkhtmltopdf/type.Result.html' title='wkhtmltopdf::Result'>Result</a>&lt;<a class='struct' href='../../wkhtmltopdf/lowlevel/struct.PdfGuard.html' title='wkhtmltopdf::lowlevel::PdfGuard'>PdfGuard</a>&gt;</pre><div class='docblock'><p>Initializes wkhtmltopdf</p>
 
-<p>This function will only initialize wkhtmltopdf once per process
-  which is <a href="https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890">a fundamental limitation of wkhtmltopdf</a>.</p>
+<p>This function will only initialize wkhtmltopdf once per process which is a
+  <a href="https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890">fundamental limitation of wkhtmltopdf</a>.
+  Calling <a href="../struct.PdfApplication.html"><code>PdfApplication::new()</code></a>
+  has the same effect of initializing wkhtmltopdf.</p>
 
 <p>Subsequent attempts to initialize wkhtmltopdf will return <code>Error:IllegalInit</code></p>
 </div></section>

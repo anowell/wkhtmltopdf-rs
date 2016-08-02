@@ -401,13 +401,32 @@
 <span id="357">357</span>
 <span id="358">358</span>
 <span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! Low-level wkhtmltopdf without the raw pointers</span>
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! This module abstracts away the raw pointers of [wkhmtltox-sys](https://anowell.github.io/wkhtmltox-sys/wkhtmltox_sys/)</span>
 <span class='doccomment'>//! while providing ownership and drop semantics necessary to safely use wkhtmltox-sys.</span>
 <span class='doccomment'>//!</span>
-<span class='doccomment'>//! It is recommended to use the `PdfBuilder` build methods which manage all of these details,</span>
+<span class='doccomment'>//! It is recommended to use the [`PdfBuilder`](../struct.PdfBuilder.html) build methods which manage all of these details,</span>
 <span class='doccomment'>//! however, some usage scenarios (e.g. adding multiple objects to your PDF) may require</span>
 <span class='doccomment'>//! using this lower-level module to achieve sufficient control.</span>
 <span class='kw'>use</span> <span class='ident'>wkhtmltox_sys</span>::<span class='ident'>pdf</span>::<span class='op'>*</span>;
@@ -416,7 +435,9 @@
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>ffi</span>::{<span class='ident'>CString</span>, <span class='ident'>CStr</span>};
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>os</span>::<span class='ident'>raw</span>::{<span class='ident'>c_char</span>, <span class='ident'>c_int</span>};
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>sync</span>::{<span class='ident'>Arc</span>, <span class='ident'>Mutex</span>, <span class='ident'>mpsc</span>};
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>marker</span>::<span class='ident'>PhantomData</span>;
 <span class='kw'>use</span> <span class='ident'>thread_id</span>;
+
 <span class='kw'>use</span> <span class='kw'>super</span>::{<span class='prelude-ty'>Result</span>, <span class='ident'>Error</span>, <span class='ident'>PdfOutput</span>};
 
 <span class='kw'>enum</span> <span class='ident'>WkhtmltopdfState</span> {
@@ -444,14 +465,16 @@
 
 <span class='doccomment'>/// Handles initialization and deinitialization of wkhtmltopdf</span>
 <span class='doccomment'>///</span>
-<span class='doccomment'>/// This struct may only be initialized once per process</span>
-<span class='doccomment'>///   which is [a fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).</span>
+<span class='doccomment'>/// This struct may only be initialized once per process which is a</span>
+<span class='doccomment'>/// which is [basic limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).</span>
 <span class='doccomment'>///</span>
 <span class='doccomment'>/// When it goes out of scope, wkhtmltopdf will be deinitialized</span>
-<span class='doccomment'>///   and further PDF generation will not be possible.</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfGuard</span> { <span class='ident'>_private</span>: () }
-<span class='kw'>impl</span> <span class='op'>!</span><span class='ident'>Send</span> <span class='kw'>for</span> <span class='ident'>PdfGuard</span> {}
-<span class='kw'>impl</span> <span class='op'>!</span><span class='ident'>Sync</span> <span class='kw'>for</span> <span class='ident'>PdfGuard</span> {}
+<span class='doccomment'>/// and further PDF generation will not be possible.</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfGuard</span> {
+    <span class='comment'>// Private to prevent struct construction</span>
+    <span class='comment'>// PhantomData&lt;*const ()&gt; to effectively impl !Send and !Sync on stable</span>
+    <span class='ident'>_private</span>: <span class='ident'>PhantomData</span><span class='op'>&lt;</span><span class='op'>*</span><span class='kw'>const</span> ()<span class='op'>&gt;</span>
+}
 
 <span class='doccomment'>/// Safe wrapper for managing wkhtmltopdf global settings</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PdfGlobalSettings</span> {
@@ -477,8 +500,10 @@
 
 <span class='doccomment'>/// Initializes wkhtmltopdf</span>
 <span class='doccomment'>///</span>
-<span class='doccomment'>/// This function will only initialize wkhtmltopdf once per process</span>
-<span class='doccomment'>///   which is [a fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).</span>
+<span class='doccomment'>/// This function will only initialize wkhtmltopdf once per process which is a</span>
+<span class='doccomment'>///   [fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).</span>
+<span class='doccomment'>///   Calling [`PdfApplication::new()`](../struct.PdfApplication.html)</span>
+<span class='doccomment'>///   has the same effect of initializing wkhtmltopdf.</span>
 <span class='doccomment'>///</span>
 <span class='doccomment'>/// Subsequent attempts to initialize wkhtmltopdf will return `Error:IllegalInit`</span>
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>pdf_init</span>() <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>PdfGuard</span><span class='op'>&gt;</span> {
@@ -496,7 +521,7 @@
             } <span class='kw'>else</span> {
                 <span class='macro'>error</span><span class='macro'>!</span>(<span class='string'>&quot;failed to initialize wkhtmltopdf&quot;</span>);
             }
-            <span class='prelude-val'>Ok</span>(<span class='ident'>PdfGuard</span>{ <span class='ident'>_private</span>: () })
+            <span class='prelude-val'>Ok</span>(<span class='ident'>PdfGuard</span>{ <span class='ident'>_private</span>: <span class='ident'>PhantomData</span> })
         }
         _ <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>Error</span>::<span class='ident'>IllegalInit</span>)
     }
@@ -560,16 +585,24 @@
 
 
 <span class='kw'>impl</span> <span class='ident'>PdfConverter</span> {
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>add_page_object</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='kw-2'>mut</span> <span class='ident'>pdf_object</span>: <span class='ident'>PdfObjectSettings</span>) {
-        <span class='kw'>let</span> <span class='ident'>null</span>: <span class='op'>*</span><span class='kw'>const</span> <span class='ident'>c_char</span> <span class='op'>=</span> <span class='ident'>ptr</span>::<span class='ident'>null</span>();
+    <span class='doccomment'>/// Adds a page object to the PDF by URL or local path to the page</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// This method will set/override the `page` object setting.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>add_page_object</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='kw-2'>mut</span> <span class='ident'>pdf_object</span>: <span class='ident'>PdfObjectSettings</span>, <span class='ident'>page</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) {
+        <span class='kw'>unsafe</span> { <span class='ident'>pdf_object</span>.<span class='ident'>set</span>(<span class='string'>&quot;page&quot;</span>, <span class='ident'>page</span>).<span class='ident'>expect</span>(<span class='string'>&quot;Failed to set &#39;page&#39; setting&quot;</span>); }
 
         <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_add_object data=NULL&quot;</span>);
         <span class='kw'>unsafe</span> {
-            <span class='ident'>wkhtmltopdf_add_object</span>(<span class='self'>self</span>.<span class='ident'>converter</span>, <span class='ident'>pdf_object</span>.<span class='ident'>object_settings</span>, <span class='ident'>null</span>);
+            <span class='ident'>wkhtmltopdf_add_object</span>(<span class='self'>self</span>.<span class='ident'>converter</span>, <span class='ident'>pdf_object</span>.<span class='ident'>object_settings</span>, <span class='ident'>ptr</span>::<span class='ident'>null</span>());
         };
         <span class='ident'>pdf_object</span>.<span class='ident'>needs_delete</span> <span class='op'>=</span> <span class='bool-val'>false</span>;
     }
 
+    <span class='doccomment'>/// Adds a page object to the PDF using provided HTML data</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// In general, this will result in ignoring the &#39;page&#39; setting if added to this `pdf_object`.</span>
+    <span class='doccomment'>///   The exception is when `html` is an empty string, but `app_page_object` should be</span>
+    <span class='doccomment'>///   the preferred way to set the `page` setting.</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>add_html_object</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='kw-2'>mut</span> <span class='ident'>pdf_object</span>: <span class='ident'>PdfObjectSettings</span>, <span class='ident'>html</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) {
         <span class='kw'>let</span> <span class='ident'>c_html</span> <span class='op'>=</span> <span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>html</span>).<span class='ident'>expect</span>(<span class='string'>&quot;null byte found&quot;</span>);
 
@@ -580,6 +613,11 @@
         <span class='ident'>pdf_object</span>.<span class='ident'>needs_delete</span> <span class='op'>=</span> <span class='bool-val'>false</span>;
     }
 
+    <span class='doccomment'>/// Performs the HTML to PDF conversion</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// This method does not do any additional allocations of the output,</span>
+    <span class='doccomment'>///   so the `PdfConverter` will be owned by `PdfOutput` so that</span>
+    <span class='doccomment'>///   it is not dropped until the `PdfOutput` is dropped.</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>convert</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>PdfOutput</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;&gt;</span> {
         <span class='kw'>let</span> <span class='ident'>rx</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>setup_callbacks</span>();
         <span class='macro'>debug</span><span class='macro'>!</span>(<span class='string'>&quot;wkhtmltopdf_convert&quot;</span>);
