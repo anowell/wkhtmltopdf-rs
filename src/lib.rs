@@ -23,9 +23,10 @@
 //!
 //! Other examples can be seen in the documentation for
 //! [`PdfBuilder`](struct.PdfBuilder.html) methods:
-//! [`build_from_html`](struct.PdfBuilder.html#method.build_from_html),
-//! [`build_from_url`](struct.PdfBuilder.html#method.build_from_url), and
-//! [`build_from_path`](struct.PdfBuilder.html#method.build_from_path).
+//!
+//! - [`build_from_html`](struct.PdfBuilder.html#method.build_from_html)
+//! - [`build_from_url`](struct.PdfBuilder.html#method.build_from_url)
+//! - [`build_from_path`](struct.PdfBuilder.html#method.build_from_path)
 //!
 //! Addtionally, the [`lowlevel`](lowlevel/index.html) module provides safe abstractions
 //!   that allow full configuration of wkhtmltopdf.
