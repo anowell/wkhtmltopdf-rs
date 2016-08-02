@@ -1,3 +1,34 @@
+//! Generate PDFs from HTML safely using [wkhtmltopdf](http://wkhtmltopdf.org/)
+//!
+//! Wkhtmltopdf uses QT Webkit to render HTML for PDF generation.
+//! This crate depends on [low-level wkhtmltopdf bindings](https://crates.io/crates/wkhtmltox-sys),
+//! to provide an ergonomimc API for generating PDFs from URLs, local HTML files, or HTML strings.
+//! Installing wkhtmltopdf (currently 0.12.3) is a prerequisite to using this crate.
+//!
+//! ## Example
+//! ```no_run
+//! use wkhtmltopdf::*;
+//!
+//! let html = r#"<html><body><div>foo</div></body></html>"#;
+//! let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+//! let mut pdfout = pdf_app.builder()
+//!     .orientation(Orientation::Landscape)
+//!     .margin(Size::Inches(2))
+//!     .title("Awesome Foo")
+//!     .build_from_html(&html)
+//!     .expect("failed to build pdf");
+//!
+//! pdfout.save("foo.pdf").expect("failed to save foo.pdf");
+//! ```
+//!
+//! Other examples can be seen in the documentation for
+//! [`PdfBuilder`](struct.PdfBuilder.html) methods:
+//! [`build_from_html`](struct.PdfBuilder.html#method.build_from_html),
+//! [`build_from_url`](struct.PdfBuilder.html#method.build_from_url), and
+//! [`build_from_path`](struct.PdfBuilder.html#method.build_from_path).
+//!
+//! Addtionally, the [`lowlevel`](lowlevel/index.html) module provides safe abstractions
+//!   that allow full configuration of wkhtmltopdf.
 extern crate wkhtmltox_sys;
 extern crate url;
 extern crate thread_id;
@@ -108,18 +139,32 @@ impl From<(Size, Size, Size, Size)> for Margin {
 }
 
 /// Structure for initializing the underlying wkhtmltopdf
+///
+/// This is effective a wrapper around `PdfGuard` that provides
+/// a method for instantiating one a builder
 pub struct PdfApplication {
     _guard: PdfGuard
 }
 
 impl PdfApplication {
+    /// Initializes Wkhtmltopdf
+    ///
+    /// Wkhtmltopdf will remain initialized for this process until `PdfApplication` is dropped.
+    /// Wkhtmltopdf may only be initialized once per process, and
+    /// and all PDF generation must happen from the same thread that initialized wkhtmltopdf.
+    ///
+    /// Subsequent attempts to initialize wkhtmltopdf will return `Error:IllegalInit`.
     pub fn new() -> Result<PdfApplication> {
         pdf_init().map( |guard|
             PdfApplication { _guard: guard }
         )
     }
 
-    // mutable reference allows compiler to ensure only one builder active at a time
+    /// Instantiate a `PdfBuilder`
+    ///
+    /// This method borrows the `self` mutably to ensure only that one builder is active at a time which is a
+    /// [basic limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1711).
+    /// Parallel execution is currently only possible by spawning multiple processes.
     pub fn builder(&mut self) -> PdfBuilder {
         PdfBuilder {
             gs: HashMap::new(),
@@ -241,7 +286,7 @@ impl PdfBuilder {
     /// ```
     ///
     /// This method should be safe if using only safe builder methods, or if usage
-    ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
+    /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_url<'a, 'b>(&'a mut self, url: Url) -> Result<PdfOutput<'b>> {
         let global = try!(self.global_settings());
         let object = try!(self.object_settings());
@@ -262,7 +307,7 @@ impl PdfBuilder {
     /// ```
     ///
     /// This method should be safe if using only safe builder methods, or if usage
-    ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
+    /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_path<'a, 'b, P: AsRef<Path>>(&'a mut self, path: P) -> Result<PdfOutput<'b>> {
         let global = try!(self.global_settings());
         let object = try!(self.object_settings());
@@ -284,7 +329,7 @@ impl PdfBuilder {
     /// ```
     ///
     /// This method should be safe if using only safe builder methods, or if usage
-    ///    of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
+    /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_html<'a, 'b, S: AsRef<str>>(&'a mut self, html: S) -> Result<PdfOutput<'b>> {
         let global = try!(self.global_settings());
         let object = try!(self.object_settings());

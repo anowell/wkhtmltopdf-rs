@@ -3,7 +3,7 @@
 //! This module abstracts away the raw pointers of [wkhmtltox-sys](https://anowell.github.io/wkhtmltox-sys/wkhtmltox_sys/)
 //! while providing ownership and drop semantics necessary to safely use wkhtmltox-sys.
 //!
-//! It is recommended to use the `PdfBuilder` build methods which manage all of these details,
+//! It is recommended to use the [`PdfBuilder`](../struct.PdfBuilder.html) build methods which manage all of these details,
 //! however, some usage scenarios (e.g. adding multiple objects to your PDF) may require
 //! using this lower-level module to achieve sufficient control.
 use wkhtmltox_sys::pdf::*;
@@ -42,11 +42,11 @@ lazy_static! {
 
 /// Handles initialization and deinitialization of wkhtmltopdf
 ///
-/// This struct may only be initialized once per process
-///   which is [a fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).
+/// This struct may only be initialized once per process which is a
+/// which is [basic limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).
 ///
 /// When it goes out of scope, wkhtmltopdf will be deinitialized
-///   and further PDF generation will not be possible.
+/// and further PDF generation will not be possible.
 pub struct PdfGuard {
     // Private to prevent struct construction
     // PhantomData<*const ()> to effectively impl !Send and !Sync on stable
@@ -77,8 +77,10 @@ pub struct PdfConverter {
 
 /// Initializes wkhtmltopdf
 ///
-/// This function will only initialize wkhtmltopdf once per process
-///   which is [a fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).
+/// This function will only initialize wkhtmltopdf once per process which is a
+///   [fundamental limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).
+///   Calling [`PdfApplication::new()`](../struct.PdfApplication.html)
+///   has the same effect of initializing wkhtmltopdf.
 ///
 /// Subsequent attempts to initialize wkhtmltopdf will return `Error:IllegalInit`
 pub fn pdf_init() -> Result<PdfGuard> {
