@@ -7,7 +7,7 @@ use std::fs::File;
 
 fn main() {
     env_logger::init().unwrap();
-    let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+    let pdf_app = PdfApplication::new().expect("Failed to init PDF application");
 
     let html = r#"
         <html><body>

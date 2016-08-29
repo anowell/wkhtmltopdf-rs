@@ -6,7 +6,7 @@ use wkhtmltopdf::*;
 
 fn main() {
     env_logger::init().unwrap();
-    let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+    let pdf_app = PdfApplication::new().expect("Failed to init PDF application");
 
     let html = r#"
       <html><body>
@@ -15,27 +15,29 @@ fn main() {
       </body></html>
     "#;
 
-    {
-      let mut pdfout = pdf_app.builder()
-        .orientation(Orientation::Landscape)
+    let mut builder1 = pdf_app.builder();
+    builder1.orientation(Orientation::Landscape)
         .margin(Size::Millimeters(12))
-        .title("PDFs for Rust")
-        .build_from_html(&html)
-        .expect("failed to build pdf");
+        .title("PDFs for Rust");
 
-      let _ = pdfout.save("basic.pdf").expect("failed to save basic.pdf");
-      println!("PDF saved as basic.pdf");
+    let mut builder2 = pdf_app.builder();
+    builder2.orientation(Orientation::Landscape)
+        .margin(Size::Millimeters(12))
+        .title("Rust Website");
+
+    {
+        let mut pdfout1 = builder1.build_from_html(&html)
+            .expect("failed to build pdf");
+
+        let _ = pdfout1.save("basic.pdf").expect("failed to save basic.pdf");
+        println!("PDF saved as basic.pdf");
     }
 
     {
-      let mut pdfout = pdf_app.builder()
-        .orientation(Orientation::Landscape)
-        .margin(Size::Millimeters(12))
-        .title("Rust Website")
-        .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap())
-        .expect("failed to build pdf");
+      let mut pdfout2 = builder2.build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap())
+          .expect("failed to build pdf");
 
-      let _ = pdfout.save("basic2.pdf").expect("failed to save basic.pdf");
+      let _ = pdfout2.save("basic2.pdf").expect("failed to save basic.pdf");
       println!("PDF saved as basic2.pdf");
-    }
+   }
 }

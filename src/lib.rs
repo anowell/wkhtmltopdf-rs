@@ -2,7 +2,7 @@
 //!
 //! Wkhtmltopdf uses QT Webkit to render HTML for PDF generation.
 //! This crate depends on [low-level wkhtmltopdf bindings](https://crates.io/crates/wkhtmltox-sys),
-//! to provide an ergonomimc API for generating PDFs from URLs, local HTML files, or HTML strings.
+//! to provide an ergonomic API for generating PDFs from URLs, local HTML files, or HTML strings.
 //! Installing wkhtmltopdf (currently 0.12.3) is a prerequisite to using this crate.
 //!
 //! ## Example
@@ -10,7 +10,7 @@
 //! use wkhtmltopdf::*;
 //!
 //! let html = r#"<html><body><div>foo</div></body></html>"#;
-//! let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+//! let pdf_app = PdfApplication::new().expect("Failed to init PDF application");
 //! let mut pdfout = pdf_app.builder()
 //!     .orientation(Orientation::Landscape)
 //!     .margin(Size::Inches(2))
@@ -166,7 +166,7 @@ impl PdfApplication {
     /// This method borrows the `self` mutably to ensure only that one builder is active at a time which is a
     /// [basic limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1711).
     /// Parallel execution is currently only possible by spawning multiple processes.
-    pub fn builder(&mut self) -> PdfBuilder {
+    pub fn builder(&self) -> PdfBuilder {
         PdfBuilder {
             gs: HashMap::new(),
             os: HashMap::new(),
@@ -388,7 +388,7 @@ mod tests {
     fn one_test_to_rule_them_all() {
         // Has to be a single test because PdfApplication can only be initialized once and is !Sync/!Send
         let _ = env_logger::init();
-        let mut pdf_app = PdfApplication::new().expect("Failed to init PDF Application");
+        let pdf_app = PdfApplication::new().expect("Failed to init PDF Application");
 
         {
             // Test building PDF from HTML
