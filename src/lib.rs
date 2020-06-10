@@ -60,7 +60,7 @@ pub struct PdfOutput<'a> {
 }
 
 /// Physical size of the paper
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum PageSize {
     A1, A2, A3, A4, A5, A6, A7, A8, A9,
     B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10,
@@ -87,7 +87,7 @@ impl PageSize {
 }
 
 /// Unit-aware sizes
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Size { Millimeters(u32), Inches(u32) }
 impl Size {
     fn value(&self) -> String {
@@ -99,11 +99,11 @@ impl Size {
 }
 
 /// PDF Orientation
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Orientation { Landscape, Portrait }
 
 /// PDF Margins
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Margin {
     pub top: Size,
     pub bottom: Size,
