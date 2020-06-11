@@ -154,7 +154,7 @@ impl PdfGlobalSettings {
         self.needs_delete = false;
 
         PdfConverter {
-            converter: converter,
+            converter,
             _global: self,
         }
     }
@@ -228,7 +228,7 @@ impl PdfConverter {
         let (tx, rx) = mpsc::channel();
         let errors = Arc::new(Mutex::new(Vec::new()));
 
-        let tx_finished = tx.clone();
+        let tx_finished = tx;
         let errors_finished = errors.clone();
         let on_finished = move |i| {
             let errors = errors_finished.lock().unwrap();

@@ -92,8 +92,8 @@ pub enum Size { Millimeters(u32), Inches(u32) }
 impl Size {
     fn value(&self) -> String {
         match self {
-            &Size::Millimeters(ref n) => format!("{}mm", n),
-            &Size::Inches(ref n) => format!("{}in", n),
+            Size::Millimeters(ref n) => format!("{}mm", n),
+            Size::Inches(ref n) => format!("{}in", n),
         }
     }
 }
@@ -114,28 +114,28 @@ pub struct Margin {
 impl From<Size> for Margin {
     /// Performs the conversion using `size` for all margins
     fn from(size: Size) -> Margin {
-        Margin{ top: size.clone(), bottom: size.clone(), left: size.clone(), right: size.clone() }
+        Margin{ top: size, bottom: size, left: size, right: size }
     }
 }
 
 impl From<(Size, Size)> for Margin {
     /// Performs the converstion to margins from an ordered tuple representing: (top & bottom, left & right)
     fn from(sizes: (Size, Size)) -> Margin {
-        Margin{ top: sizes.0.clone(), bottom: sizes.0.clone(), left: sizes.1.clone(), right: sizes.1.clone() }
+        Margin{ top: sizes.0, bottom: sizes.0, left: sizes.1, right: sizes.1 }
     }
 }
 
 impl From<(Size, Size, Size)> for Margin {
     /// Performs the converstion to margins from an ordered tuple representing: (top, left & right, bottom)
     fn from(sizes: (Size, Size, Size)) -> Margin {
-        Margin{ top: sizes.0.clone(), bottom: sizes.2.clone(), left: sizes.1.clone(), right: sizes.1.clone() }
+        Margin{ top: sizes.0, bottom: sizes.2, left: sizes.1, right: sizes.1 }
     }
 }
 
 impl From<(Size, Size, Size, Size)> for Margin {
     /// Performs the converstion to margins from an ordered tuple representing: (top, right, bottom, left)
     fn from(sizes: (Size, Size, Size, Size)) -> Margin {
-        Margin{ top: sizes.0.clone(), bottom: sizes.2.clone(), left: sizes.3.clone(), right: sizes.1.clone() }
+        Margin{ top: sizes.0, bottom: sizes.2, left: sizes.3, right: sizes.1 }
     }
 }
 
@@ -190,7 +190,7 @@ impl PdfBuilder {
                 self.gs.insert("size.height", h.value().into());
             },
             _ => {
-                self.gs.insert("size.pageSize", page_size.value().into());
+                self.gs.insert("size.pageSize", page_size.value());
             }
         };
         self
