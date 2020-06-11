@@ -259,6 +259,8 @@ impl PdfBuilder {
 
     /// Set a global setting not explicitly supported by the PdfBuilder
     ///
+    /// # Safety
+    ///
     /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior
     //    (e.g. segfault) in later calls.
     pub unsafe fn global_setting<S: Into<Cow<'static, str>>>(&mut self, name: &'static str, value: S) -> &mut PdfBuilder {
@@ -267,6 +269,8 @@ impl PdfBuilder {
     }
 
     /// Set an object setting not explicitly supported by the PdfBuilder
+    ///
+    /// # Safety
     ///
     /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior
     //    (e.g. segfault) in later calls.
