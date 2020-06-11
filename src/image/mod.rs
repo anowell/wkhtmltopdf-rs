@@ -74,7 +74,6 @@ impl ImageApplication {
     pub fn builder(&self) -> ImageBuilder {
         ImageBuilder {
             gs: HashMap::new(),
-            os: HashMap::new(),
         }
     }
 }
@@ -83,7 +82,6 @@ impl ImageApplication {
 #[derive(Clone)]
 pub struct ImageBuilder {
     gs: HashMap<&'static str, Cow<'static, str>>,
-    os: HashMap<&'static str, Cow<'static, str>>,
 }
 
 impl ImageBuilder {
@@ -112,6 +110,9 @@ impl ImageBuilder {
 
     /// Set a global setting not explicitly supported by the imageBuilder
     ///
+    /// Valid settings can be found here:
+    /// https://wkhtmltopdf.org/libwkhtmltox/pagesettings.html#pageImageGlobal
+    ///
     /// # Safety
     ///
     /// Unsafe because values not supported by wkhtmltoimage can cause undefined behavior
@@ -122,21 +123,6 @@ impl ImageBuilder {
         value: S,
     ) -> &mut ImageBuilder {
         self.gs.insert(name, value.into());
-        self
-    }
-
-    /// Set an object setting not explicitly supported by the imageBuilder
-    ///
-    /// # Safety
-    ///
-    /// Unsafe because values not supported by wkhtmltoimage can cause undefined behavior
-    //    (e.g. segfault) in later calls.
-    pub unsafe fn object_setting<S: Into<Cow<'static, str>>>(
-        &mut self,
-        name: &'static str,
-        value: S,
-    ) -> &mut ImageBuilder {
-        self.os.insert(name, value.into());
         self
     }
 
