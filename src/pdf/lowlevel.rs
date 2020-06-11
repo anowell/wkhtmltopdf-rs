@@ -14,6 +14,8 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::{ptr, slice};
 use thread_id;
 use wkhtmltox_sys::pdf::*;
+use lazy_static::lazy_static;
+use log::{debug, warn, error};
 
 use super::{Error, PdfOutput, Result};
 
