@@ -1,5 +1,5 @@
-use std::{io, result};
 use quick_error::quick_error;
+use std::{io, result};
 
 quick_error! {
     /// The error type for wkhtmltopdf generation
