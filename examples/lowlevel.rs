@@ -1,6 +1,4 @@
-extern crate env_logger;
-extern crate url;
-extern crate wkhtmltopdf;
+use env_logger;
 
 use std::fs::File;
 use wkhtmltopdf::*;

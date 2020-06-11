@@ -30,9 +30,7 @@
 //!
 //! Addtionally, the [`lowlevel`](lowlevel/index.html) module provides safe abstractions
 //!   that allow full configuration of wkhtmltopdf.
-extern crate thread_id;
-extern crate url;
-extern crate wkhtmltox_sys;
+
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -415,15 +413,15 @@ impl<'a> Read for PdfOutput<'a> {
 }
 
 impl<'a> std::fmt::Debug for PdfOutput<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.data.fmt(f)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    extern crate env_logger;
     use super::*;
+    use env_logger;
 
     #[test]
     fn one_test_to_rule_them_all() {
