@@ -3,7 +3,7 @@ name = "wkhtmltopdf"
 version = "0.3.0"
 license = "MIT"
 authors = ["Anthony Nowell <anowell@gmail.com>"]
-
+edition = "2018"
 description = "High-level bindings to wkhtmltopdf"
 documentation = "https://anowell.github.io/wkhtmltopdf-rs/wkhtmltopdf/"
 repository = "https://github.com/anowell/wkhtmltopdf-rs"
