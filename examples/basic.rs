@@ -5,7 +5,7 @@ extern crate env_logger;
 use wkhtmltopdf::*;
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     let pdf_app = PdfApplication::new().expect("Failed to init PDF application");
 
     let html = r#"
