@@ -407,30 +407,3 @@ impl<'a> std::fmt::Debug for PdfOutput<'a> {
         self.data.fmt(f)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    extern crate env_logger;
-    use super::*;
-
-    #[test]
-    fn one_test_to_rule_them_all() {
-        // Has to be a single test because PdfApplication can only be initialized once and is !Sync/!Send
-        let _ = env_logger::init();
-        let pdf_app = PdfApplication::new().expect("Failed to init PDF Application");
-
-        {
-            // Test building PDF from HTML
-            let res = pdf_app.builder().build_from_html("basic <b>from</b> html");
-            assert!(res.is_ok(), "{}", res.unwrap_err());
-        }
-
-        {
-            // Test building PDF from URL
-            let res = pdf_app
-                .builder()
-                .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap());
-            assert!(res.is_ok(), "{}", res.unwrap_err());
-        }
-    }
-}

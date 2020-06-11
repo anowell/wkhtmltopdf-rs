@@ -14,7 +14,6 @@ use std::marker::PhantomData;
 use std::os::raw::{c_char, c_int};
 use std::sync::{mpsc, Arc, Mutex};
 use std::{ptr, slice};
-use thread_id;
 use wkhtmltox_sys::pdf::*;
 
 use super::{Error, PdfOutput, Result};

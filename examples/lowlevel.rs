@@ -1,6 +1,6 @@
 use env_logger;
-
 use std::fs::File;
+use wkhtmltopdf::Orientation;
 use wkhtmltopdf::*;
 
 fn main() {
