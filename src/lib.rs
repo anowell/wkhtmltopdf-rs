@@ -30,26 +30,28 @@
 //!
 //! Addtionally, the [`lowlevel`](lowlevel/index.html) module provides safe abstractions
 //!   that allow full configuration of wkhtmltopdf.
-extern crate wkhtmltox_sys;
-extern crate url;
 extern crate thread_id;
-#[macro_use] extern crate lazy_static;
-#[macro_use] extern crate log;
-#[macro_use] extern crate quick_error;
+extern crate url;
+extern crate wkhtmltox_sys;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate quick_error;
 
 pub mod lowlevel;
 
 mod error;
 pub use error::*;
 
+use lowlevel::*;
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{self, Read};
 use std::path::Path;
 use url::Url;
-use std::io::{self, Read};
-use std::collections::HashMap;
-use std::borrow::Cow;
-use std::fs::File;
-use lowlevel::*;
-
 
 /// Generated PDF output
 pub struct PdfOutput<'a> {
@@ -61,6 +63,7 @@ pub struct PdfOutput<'a> {
 
 /// Physical size of the paper
 #[derive(Debug, Copy, Clone)]
+#[rustfmt::skip]
 pub enum PageSize {
     A1, A2, A3, A4, A5, A6, A7, A8, A9,
     B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10,
@@ -71,6 +74,7 @@ pub enum PageSize {
 }
 
 impl PageSize {
+    #[rustfmt::skip]
     fn value(&self) -> Cow<'static, str> {
         // TODO: srsly, this should be a macro
         use PageSize::*;
@@ -88,7 +92,10 @@ impl PageSize {
 
 /// Unit-aware sizes
 #[derive(Debug, Copy, Clone)]
-pub enum Size { Millimeters(u32), Inches(u32) }
+pub enum Size {
+    Millimeters(u32),
+    Inches(u32),
+}
 impl Size {
     fn value(&self) -> String {
         match self {
@@ -100,7 +107,10 @@ impl Size {
 
 /// PDF Orientation
 #[derive(Debug, Copy, Clone)]
-pub enum Orientation { Landscape, Portrait }
+pub enum Orientation {
+    Landscape,
+    Portrait,
+}
 
 /// PDF Margins
 #[derive(Debug, Copy, Clone)]
@@ -114,28 +124,48 @@ pub struct Margin {
 impl From<Size> for Margin {
     /// Performs the conversion using `size` for all margins
     fn from(size: Size) -> Margin {
-        Margin{ top: size, bottom: size, left: size, right: size }
+        Margin {
+            top: size,
+            bottom: size,
+            left: size,
+            right: size,
+        }
     }
 }
 
 impl From<(Size, Size)> for Margin {
     /// Performs the converstion to margins from an ordered tuple representing: (top & bottom, left & right)
     fn from(sizes: (Size, Size)) -> Margin {
-        Margin{ top: sizes.0, bottom: sizes.0, left: sizes.1, right: sizes.1 }
+        Margin {
+            top: sizes.0,
+            bottom: sizes.0,
+            left: sizes.1,
+            right: sizes.1,
+        }
     }
 }
 
 impl From<(Size, Size, Size)> for Margin {
     /// Performs the converstion to margins from an ordered tuple representing: (top, left & right, bottom)
     fn from(sizes: (Size, Size, Size)) -> Margin {
-        Margin{ top: sizes.0, bottom: sizes.2, left: sizes.1, right: sizes.1 }
+        Margin {
+            top: sizes.0,
+            bottom: sizes.2,
+            left: sizes.1,
+            right: sizes.1,
+        }
     }
 }
 
 impl From<(Size, Size, Size, Size)> for Margin {
     /// Performs the converstion to margins from an ordered tuple representing: (top, right, bottom, left)
     fn from(sizes: (Size, Size, Size, Size)) -> Margin {
-        Margin{ top: sizes.0, bottom: sizes.2, left: sizes.3, right: sizes.1 }
+        Margin {
+            top: sizes.0,
+            bottom: sizes.2,
+            left: sizes.3,
+            right: sizes.1,
+        }
     }
 }
 
@@ -144,7 +174,7 @@ impl From<(Size, Size, Size, Size)> for Margin {
 /// This is effective a wrapper around `PdfGuard` that provides
 /// a method for instantiating one a builder
 pub struct PdfApplication {
-    _guard: PdfGuard
+    _guard: PdfGuard,
 }
 
 impl PdfApplication {
@@ -156,9 +186,7 @@ impl PdfApplication {
     ///
     /// Subsequent attempts to initialize wkhtmltopdf will return `Error:IllegalInit`.
     pub fn new() -> Result<PdfApplication> {
-        pdf_init().map( |guard|
-            PdfApplication { _guard: guard }
-        )
+        pdf_init().map(|guard| PdfApplication { _guard: guard })
     }
 
     /// Instantiate a `PdfBuilder`
@@ -188,7 +216,7 @@ impl PdfBuilder {
             PageSize::Custom(ref w, ref h) => {
                 self.gs.insert("size.width", w.value().into());
                 self.gs.insert("size.height", h.value().into());
-            },
+            }
             _ => {
                 self.gs.insert("size.pageSize", page_size.value());
             }
@@ -227,7 +255,8 @@ impl PdfBuilder {
 
     /// JPEG image compression quality in percentage (default 94)
     pub fn image_quality(&mut self, image_quality: u32) -> &mut PdfBuilder {
-        self.gs.insert("imageQuality", image_quality.to_string().into());
+        self.gs
+            .insert("imageQuality", image_quality.to_string().into());
         self
     }
 
@@ -249,7 +278,7 @@ impl PdfBuilder {
                 self.gs.insert("outline", "true".into());
                 // Uncomment when upstream 3055 is resolved
                 // self.gs.insert("outlineDepth", depth.to_string().into());
-            },
+            }
             None => {
                 self.gs.insert("outline", "false".into());
             }
@@ -263,7 +292,11 @@ impl PdfBuilder {
     ///
     /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior
     //    (e.g. segfault) in later calls.
-    pub unsafe fn global_setting<S: Into<Cow<'static, str>>>(&mut self, name: &'static str, value: S) -> &mut PdfBuilder {
+    pub unsafe fn global_setting<S: Into<Cow<'static, str>>>(
+        &mut self,
+        name: &'static str,
+        value: S,
+    ) -> &mut PdfBuilder {
         self.gs.insert(name, value.into());
         self
     }
@@ -274,7 +307,11 @@ impl PdfBuilder {
     ///
     /// Unsafe because values not supported by wkhtmltopdf can cause undefined behavior
     //    (e.g. segfault) in later calls.
-    pub unsafe fn object_setting<S: Into<Cow<'static, str>>>(&mut self, name: &'static str, value: S) -> &mut PdfBuilder {
+    pub unsafe fn object_setting<S: Into<Cow<'static, str>>>(
+        &mut self,
+        name: &'static str,
+        value: S,
+    ) -> &mut PdfBuilder {
         self.os.insert(name, value.into());
         self
     }
@@ -362,7 +399,7 @@ impl PdfBuilder {
     }
 }
 
-impl <'a> PdfOutput<'a> {
+impl<'a> PdfOutput<'a> {
     // Helper to save the PDF output to a local file
     pub fn save<P: AsRef<Path>>(&mut self, path: P) -> io::Result<File> {
         let mut file = File::create(path)?;
@@ -371,13 +408,13 @@ impl <'a> PdfOutput<'a> {
     }
 }
 
-impl <'a> Read for PdfOutput<'a> {
+impl<'a> Read for PdfOutput<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.data.read(buf)
     }
 }
 
-impl <'a> std::fmt::Debug for PdfOutput<'a> {
+impl<'a> std::fmt::Debug for PdfOutput<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.data.fmt(f)
     }
@@ -402,9 +439,10 @@ mod tests {
 
         {
             // Test building PDF from URL
-            let res = pdf_app.builder().build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap());
+            let res = pdf_app
+                .builder()
+                .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap());
             assert!(res.is_ok(), "{}", res.unwrap_err());
         }
     }
 }
-

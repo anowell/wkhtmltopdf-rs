@@ -1,5 +1,3 @@
-
-
 use std::{io, result};
 
 quick_error! {

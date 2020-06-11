@@ -6,16 +6,16 @@
 //! It is recommended to use the [`PdfBuilder`](../struct.PdfBuilder.html) build methods which manage all of these details,
 //! however, some usage scenarios (e.g. adding multiple objects to your PDF) may require
 //! using this lower-level module to achieve sufficient control.
-use wkhtmltox_sys::pdf::*;
-use std::{ptr, slice};
 use std::collections::HashMap;
-use std::ffi::{CString, CStr};
-use std::os::raw::{c_char, c_int};
-use std::sync::{Arc, Mutex, mpsc};
+use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
+use std::os::raw::{c_char, c_int};
+use std::sync::{mpsc, Arc, Mutex};
+use std::{ptr, slice};
 use thread_id;
+use wkhtmltox_sys::pdf::*;
 
-use super::{Result, Error, PdfOutput};
+use super::{Error, PdfOutput, Result};
 
 enum WkhtmltopdfState {
     // Wkhtmltopdf has not yet been initialized
@@ -50,7 +50,7 @@ lazy_static! {
 pub struct PdfGuard {
     // Private to prevent struct construction
     // PhantomData<*const ()> to effectively impl !Send and !Sync on stable
-    _private: PhantomData<*const ()>
+    _private: PhantomData<*const ()>,
 }
 
 /// Safe wrapper for managing wkhtmltopdf global settings
@@ -74,7 +74,6 @@ pub struct PdfConverter {
     _global: PdfGlobalSettings,
 }
 
-
 /// Initializes wkhtmltopdf
 ///
 /// This function will only initialize wkhtmltopdf once per process which is a
@@ -88,9 +87,7 @@ pub fn pdf_init() -> Result<PdfGuard> {
     match *wk_state {
         WkhtmltopdfState::New => {
             debug!("wkhtmltopdf_init graphics=0");
-            let success = unsafe {
-                wkhtmltopdf_init(0) == 1
-            };
+            let success = unsafe { wkhtmltopdf_init(0) == 1 };
             if success {
                 *wk_state = WkhtmltopdfState::Ready;
                 // first eval of the lazy static - effectively stores the thread id
@@ -98,12 +95,13 @@ pub fn pdf_init() -> Result<PdfGuard> {
             } else {
                 error!("failed to initialize wkhtmltopdf");
             }
-            Ok(PdfGuard{ _private: PhantomData })
+            Ok(PdfGuard {
+                _private: PhantomData,
+            })
         }
-        _ => Err(Error::IllegalInit)
+        _ => Err(Error::IllegalInit),
     }
 }
-
 
 impl PdfGlobalSettings {
     /// Instantiate PdfGlobalSettings
@@ -112,7 +110,10 @@ impl PdfGlobalSettings {
     pub fn new() -> Result<PdfGlobalSettings> {
         if *WKHTMLTOPDF_INIT_THREAD != thread_id::get() {
             // A lot of QT functionality expects to run from the same thread that it was first initialized on
-            return Err(Error::ThreadMismatch(*WKHTMLTOPDF_INIT_THREAD, thread_id::get()))
+            return Err(Error::ThreadMismatch(
+                *WKHTMLTOPDF_INIT_THREAD,
+                thread_id::get(),
+            ));
         }
 
         let mut wk_state = WKHTMLTOPDF_STATE.lock().unwrap();
@@ -136,10 +137,15 @@ impl PdfGlobalSettings {
     // Unsafe as it may cause undefined behavior (generally segfault) if name or value are not valid
     pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
         let c_name = CString::new(name).expect("setting name may not contain interior null bytes");
-        let c_value = CString::new(value).expect("setting value may not contain interior null bytes");
+        let c_value =
+            CString::new(value).expect("setting value may not contain interior null bytes");
 
         debug!("wkhtmltopdf_set_global_setting {}='{}'", name, value);
-        match wkhtmltopdf_set_global_setting(self.global_settings, c_name.as_ptr(), c_value.as_ptr()) {
+        match wkhtmltopdf_set_global_setting(
+            self.global_settings,
+            c_name.as_ptr(),
+            c_value.as_ptr(),
+        ) {
             0 => Err(Error::GlobalSettingFailure(name.into(), value.into())),
             1 => Ok(()),
             _ => unreachable!("wkhtmltopdf_set_global_setting returned invalid value"),
@@ -160,13 +166,16 @@ impl PdfGlobalSettings {
     }
 }
 
-
 impl PdfConverter {
     /// Adds a page object to the PDF by URL or local path to the page
     ///
     /// This method will set/override the `page` object setting.
     pub fn add_page_object(&mut self, mut pdf_object: PdfObjectSettings, page: &str) {
-        unsafe { pdf_object.set("page", page).expect("Failed to set 'page' setting"); }
+        unsafe {
+            pdf_object
+                .set("page", page)
+                .expect("Failed to set 'page' setting");
+        }
 
         debug!("wkhtmltopdf_add_object data=NULL");
         unsafe {
@@ -202,17 +211,20 @@ impl PdfConverter {
         self.remove_callbacks();
 
         if success {
-                let mut buf_ptr = ptr::null();
-                debug!("wkhtmltopdf_get_output");
+            let mut buf_ptr = ptr::null();
+            debug!("wkhtmltopdf_get_output");
             unsafe {
                 let bytes = wkhtmltopdf_get_output(self.converter, &mut buf_ptr) as usize;
                 let pdf_slice = slice::from_raw_parts(buf_ptr, bytes);
-                Ok(PdfOutput{ data: pdf_slice, _converter: self })
+                Ok(PdfOutput {
+                    data: pdf_slice,
+                    _converter: self,
+                })
             }
         } else {
             match rx.recv().expect("sender disconnected") {
                 Ok(_) => unreachable!("failed without errors"),
-                Err(err) => Err(err)
+                Err(err) => Err(err),
             }
         }
     }
@@ -266,7 +278,6 @@ impl PdfConverter {
 
         rx
     }
-
 }
 
 impl PdfObjectSettings {
@@ -280,10 +291,15 @@ impl PdfObjectSettings {
 
     pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
         let c_name = CString::new(name).expect("setting name may not contain interior null bytes");
-        let c_value = CString::new(value).expect("setting value may not contain interior null bytes");
+        let c_value =
+            CString::new(value).expect("setting value may not contain interior null bytes");
 
         debug!("wkhtmltopdf_set_object_setting {}='{}'", name, value);
-        match wkhtmltopdf_set_object_setting(self.object_settings, c_name.as_ptr(), c_value.as_ptr()) {
+        match wkhtmltopdf_set_object_setting(
+            self.object_settings,
+            c_name.as_ptr(),
+            c_value.as_ptr(),
+        ) {
             0 => Err(Error::ObjectSettingFailure(name.into(), value.into())),
             1 => Ok(()),
             _ => unreachable!("wkhtmltopdf_set_object_setting returned invalid value"),
@@ -291,12 +307,13 @@ impl PdfObjectSettings {
     }
 }
 
-
 impl Drop for PdfGlobalSettings {
     fn drop(&mut self) {
         if self.needs_delete {
             debug!("wkhtmltopdf_destroy_global_settings");
-            unsafe { wkhtmltopdf_destroy_global_settings(self.global_settings); }
+            unsafe {
+                wkhtmltopdf_destroy_global_settings(self.global_settings);
+            }
         }
     }
 }
@@ -312,13 +329,15 @@ impl Drop for PdfObjectSettings {
     fn drop(&mut self) {
         if self.needs_delete {
             debug!("wkhtmltopdf_destroy_object_settings");
-            unsafe { wkhtmltopdf_destroy_object_settings(self.object_settings); }
+            unsafe {
+                wkhtmltopdf_destroy_object_settings(self.object_settings);
+            }
         }
     }
 }
 
 // TODO: is it possible to revert to ready after convert finishes?
-impl <'a> Drop for PdfOutput<'a> {
+impl<'a> Drop for PdfOutput<'a> {
     fn drop(&mut self) {
         let mut wk_state = WKHTMLTOPDF_STATE.lock().unwrap();
         debug!("wkhtmltopdf ready again");
@@ -326,7 +345,7 @@ impl <'a> Drop for PdfOutput<'a> {
     }
 }
 
-impl  Drop for PdfGuard {
+impl Drop for PdfGuard {
     fn drop(&mut self) {
         let mut wk_state = WKHTMLTOPDF_STATE.lock().unwrap();
         debug!("wkhtmltopdf_deinit");
@@ -338,8 +357,7 @@ impl  Drop for PdfGuard {
     }
 }
 
-
-unsafe extern fn finished_callback(converter: *mut wkhtmltopdf_converter, val: c_int) {
+unsafe extern "C" fn finished_callback(converter: *mut wkhtmltopdf_converter, val: c_int) {
     let id = converter as usize;
     {
         // call and remove this converter's FINISHED_CALLBACK
@@ -350,7 +368,7 @@ unsafe extern fn finished_callback(converter: *mut wkhtmltopdf_converter, val: c
     }
 }
 
-unsafe extern fn error_callback(converter: *mut wkhtmltopdf_converter, msg_ptr: *const c_char) {
+unsafe extern "C" fn error_callback(converter: *mut wkhtmltopdf_converter, msg_ptr: *const c_char) {
     let cstr = CStr::from_ptr(msg_ptr);
     let mut callbacks = ERROR_CALLBACKS.lock().unwrap();
     let id = converter as usize;
@@ -360,7 +378,6 @@ unsafe extern fn error_callback(converter: *mut wkhtmltopdf_converter, msg_ptr: 
         None => println!("No callback for error: {}", msg),
     }
 }
-
 
 // unsafe extern fn warning_cb(_converter: *mut wkhtmltopdf_converter, msg_ptr: *const c_char) {
 //     let msg = CStr::from_ptr(msg_ptr).to_string_lossy();
