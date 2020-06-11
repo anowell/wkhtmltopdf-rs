@@ -35,8 +35,8 @@ lazy_static! {
 
     // Globally track callbacks since wkhtmltopdf doesn't allow injecting any userdata
     // The HashMap key is the converter's raw pointer cast as usize, so we can have unique callbacks per converter
-    static ref FINISHED_CALLBACKS: Mutex<HashMap<usize, Box<FnMut(i32) + 'static + Send>>> = Mutex::new(HashMap::new());
-    static ref ERROR_CALLBACKS: Mutex<HashMap<usize, Box<FnMut(String) + 'static + Send>>> = Mutex::new(HashMap::new());
+    static ref FINISHED_CALLBACKS: Mutex<HashMap<usize, Box<dyn FnMut(i32) + 'static + Send>>> = Mutex::new(HashMap::new());
+    static ref ERROR_CALLBACKS: Mutex<HashMap<usize, Box<dyn FnMut(String) + 'static + Send>>> = Mutex::new(HashMap::new());
     // TODO: 3 more callback types
 }
 

@@ -289,8 +289,8 @@ impl PdfBuilder {
     /// This method should be safe if using only safe builder methods, or if usage
     /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_url<'a, 'b>(&'a mut self, url: Url) -> Result<PdfOutput<'b>> {
-        let global = try!(self.global_settings());
-        let object = try!(self.object_settings());
+        let global = self.global_settings()?;
+        let object = self.object_settings()?;
         let mut converter = global.create_converter();
         converter.add_page_object(object, url.as_str());
         converter.convert()
@@ -310,8 +310,8 @@ impl PdfBuilder {
     /// This method should be safe if using only safe builder methods, or if usage
     /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_path<'a, 'b, P: AsRef<Path>>(&'a mut self, path: P) -> Result<PdfOutput<'b>> {
-        let global = try!(self.global_settings());
-        let object = try!(self.object_settings());
+        let global = self.global_settings()?;
+        let object = self.object_settings()?;
         let mut converter = global.create_converter();
         converter.add_page_object(object, &path.as_ref().to_string_lossy());
         converter.convert()
@@ -332,8 +332,8 @@ impl PdfBuilder {
     /// This method should be safe if using only safe builder methods, or if usage
     /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltopdf
     pub fn build_from_html<'a, 'b, S: AsRef<str>>(&'a mut self, html: S) -> Result<PdfOutput<'b>> {
-        let global = try!(self.global_settings());
-        let object = try!(self.object_settings());
+        let global = self.global_settings()?;
+        let object = self.object_settings()?;
         let mut converter = global.create_converter();
         converter.add_html_object(object, html.as_ref());
         converter.convert()
@@ -341,9 +341,9 @@ impl PdfBuilder {
 
     /// Use the relevant settings to construct a low-level instance of `PdfGlobalSettings`
     pub fn global_settings(&self) -> Result<PdfGlobalSettings> {
-        let mut global = try!(PdfGlobalSettings::new());
+        let mut global = PdfGlobalSettings::new()?;
         for (ref name, ref val) in &self.gs {
-            try!( unsafe { global.set(name, &val) } );
+            unsafe { global.set(name, &val) }?;
         }
         Ok(global)
     }
@@ -352,7 +352,7 @@ impl PdfBuilder {
     pub fn object_settings(&self) -> Result<PdfObjectSettings> {
         let mut object = PdfObjectSettings::new();
         for (ref name, ref val) in &self.os {
-            try!( unsafe { object.set(name, &val) } );
+            unsafe { object.set(name, &val) }?;
         }
         Ok(object)
     }
@@ -361,8 +361,8 @@ impl PdfBuilder {
 impl <'a> PdfOutput<'a> {
     // Helper to save the PDF output to a local file
     pub fn save<P: AsRef<Path>>(&mut self, path: P) -> io::Result<File> {
-        let mut file = try!(File::create(path));
-        let _ = try!(io::copy(self, &mut file));
+        let mut file = File::create(path)?;
+        let _ = io::copy(self, &mut file)?;
         Ok(file)
     }
 }
