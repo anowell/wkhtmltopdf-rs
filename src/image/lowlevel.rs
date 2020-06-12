@@ -241,44 +241,6 @@ impl ImageConverter {
         rx
     }
 }
-/*
-impl ImageObjectSettings {
-    pub fn new() -> ImageObjectSettings {
-        debug!("wkhtmltoimage_create_object_settings");
-        imageObjectSettings {
-            object_settings: unsafe { wkhtmltoimage_create_object_settings() },
-            needs_delete: true,
-        }
-    }
-
-    pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
-        let c_name = CString::new(name).expect("setting name may not contain interior null bytes");
-        let c_value =
-            CString::new(value).expect("setting value may not contain interior null bytes");
-
-        debug!("wkhtmltoimage_set_object_setting {}='{}'", name, value);
-        match wkhtmltoimage_set_object_setting(
-            self.object_settings,
-            c_name.as_ptr(),
-            c_value.as_ptr(),
-        ) {
-            0 => Err(Error::ObjectSettingFailure(name.into(), value.into())),
-            1 => Ok(()),
-            _ => unreachable!("wkhtmltoimage_set_object_setting returned invalid value"),
-        }
-    }
-}*/
-/*
-impl Drop for ImageGlobalSettings {
-    fn drop(&mut self) {
-        if self.needs_delete {
-            debug!("wkhtmltoimage_destroy_global_settings");
-            unsafe {
-                wkhtmltoimage_destroy_global_settings(self.global_settings);
-            }
-        }
-    }
-}*/
 
 impl Drop for ImageConverter {
     fn drop(&mut self) {
@@ -286,17 +248,6 @@ impl Drop for ImageConverter {
         unsafe { wkhtmltoimage_destroy_converter(self.converter) }
     }
 }
-/*
-impl Drop for ImageObjectSettings {
-    fn drop(&mut self) {
-        if self.needs_delete {
-            debug!("wkhtmltoimage_destroy_object_settings");
-            unsafe {
-                wkhtmltoimage_destroy_object_settings(self.object_settings);
-            }
-        }
-    }
-}*/
 
 // TODO: is it possible to revert to ready after convert finishes?
 impl<'a> Drop for ImageOutput<'a> {
