@@ -72,9 +72,7 @@ impl ImageApplication {
     /// [basic limitation of wkhtmltoimage](https://github.com/wkhtmltoimage/wkhtmltoimage/issues/1711).
     /// Parallel execution is currently only possible by spawning multiple processes.
     pub fn builder(&self) -> ImageBuilder {
-        ImageBuilder {
-            gs: HashMap::new(),
-        }
+        ImageBuilder { gs: HashMap::new() }
     }
 }
 
