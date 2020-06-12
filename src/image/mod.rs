@@ -83,6 +83,40 @@ pub struct ImageBuilder {
 }
 
 impl ImageBuilder {
+    /// The with of the screen used to render in pixels, e.g "800"
+    pub fn screen_width(&mut self, screen_width: u32) -> &mut ImageBuilder {
+        self.gs
+            .insert("screenWidth", screen_width.to_string().into());
+        self
+    }
+
+    /* Pending https://github.com/wkhtmltopdf/wkhtmltopdf/issues/4714
+    /// The with of the screen used to render in pixels, e.g "800"
+    pub fn crop_left(&mut self, crop_left: u32) -> &mut ImageBuilder {
+        self.gs.insert("crop.left", crop_left.to_string().into());
+        self
+    }
+
+    /// The with of the screen used to render in pixels, e.g "800"
+    pub fn crop_top(&mut self, crop_top: u32) -> &mut ImageBuilder {
+        self.gs.insert("crop.top", crop_top.to_string().into());
+        self
+    }
+
+    /// The with of the screen used to render in pixels, e.g "800"
+    pub fn crop_width(&mut self, crop_width: u32) -> &mut ImageBuilder {
+        self.gs.insert("crop.width", crop_width.to_string().into());
+        self
+    }
+
+    /// The with of the screen used to render in pixels, e.g "800"
+    pub fn crop_height(&mut self, crop_height: u32) -> &mut ImageBuilder {
+        self.gs
+            .insert("crop.height", crop_height.to_string().into());
+        self
+    }
+    */
+
     /// JPEG image compression quality in percentage (default 94). Only used
     /// when format is 'jpg'.
     pub fn image_quality(&mut self, image_quality: u32) -> &mut ImageBuilder {

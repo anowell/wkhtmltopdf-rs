@@ -49,5 +49,19 @@ mod tests {
                 .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap());
             assert!(res.is_ok(), "{}", res.unwrap_err());
         }
+
+        /*{ // Pending https://github.com/wkhtmltopdf/wkhtmltopdf/issues/4714
+            // Test cropping options
+            let res = image_app
+                .builder()
+                .format("png")
+                .screen_width(1280)
+                .crop_left(20)
+                .crop_top(20)
+                .crop_width(800)
+                .crop_height(600)
+                .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap());
+            assert!(res.is_ok(), "{}", res.unwrap_err());
+        }*/
     }
 }
