@@ -7,7 +7,7 @@ fn main() {
     let mut out = image_app
         .builder()
         .format(ImageFormat::Png)
-        .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap())
+        .build_from_url(&"https://www.rust-lang.org/en-US/".parse().unwrap())
         .expect("failed to build image");
     out.save("image.png").expect("failed to save image.png");
 }
