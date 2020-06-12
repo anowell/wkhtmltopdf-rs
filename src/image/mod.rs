@@ -3,7 +3,7 @@
 //! Wkhtmltoimage uses QT Webkit to render HTML for image generation.
 //! This crate depends on [low-level wkhtmltoimage bindings](https://crates.io/crates/wkhtmltox-sys),
 //! to provide an ergonomic API for generating images from URLs, local HTML files, or HTML strings.
-//! Installing wkhtmltoimage (currently 0.12.3) is a prerequisite to using this crate.
+//! Installing wkhtmltoimage (currently 0.12.6) is a prerequisite to using this crate.
 //!
 //! ## Example
 //! ```no_run
@@ -15,14 +15,14 @@
 //!     .build_from_path("input.html")
 //!     .expect("failed to build image");
 //!
-//! imageout.save("foo.image").expect("failed to save foo.image");
+//! imageout.save("foo.png").expect("failed to save foo.png");
 //! ```
 //!
 //! Other examples can be seen in the documentation for
-//! [`imageBuilder`](struct.imageBuilder.html) methods:
+//! [`ImageBuilder`](struct.ImageBuilder.html) methods:
 //!
-//! - [`build_from_url`](struct.imageBuilder.html#method.build_from_url)
-//! - [`build_from_path`](struct.imageBuilder.html#method.build_from_path)
+//! - [`build_from_url`](struct.ImageBuilder.html#method.build_from_url)
+//! - [`build_from_path`](struct.ImageBuilder.html#method.build_from_path)
 //!
 //! Addtionally, the [`lowlevel`](lowlevel/index.html) module provides safe abstractions
 //!   that allow full configuration of wkhtmltoimage.
@@ -48,8 +48,8 @@ pub struct ImageOutput<'a> {
 
 /// Structure for initializing the underlying wkhtmltoimage
 ///
-/// This is effective a wrapper around `imageGuard` that provides
-/// a method for instantiating one a builder
+/// This is effective a wrapper around `ImageGuard` that provides
+/// a method for instantiating a builder
 pub struct ImageApplication {
     _guard: ImageGuard,
 }
@@ -57,7 +57,7 @@ pub struct ImageApplication {
 impl ImageApplication {
     /// Initializes Wkhtmltoimage
     ///
-    /// Wkhtmltoimage will remain initialized for this process until `imageApplication` is dropped.
+    /// Wkhtmltoimage will remain initialized for this process until `ImageApplication` is dropped.
     /// Wkhtmltoimage may only be initialized once per process, and
     /// and all image generation must happen from the same thread that initialized wkhtmltoimage.
     ///
@@ -66,7 +66,7 @@ impl ImageApplication {
         image_init().map(|guard| ImageApplication { _guard: guard })
     }
 
-    /// Instantiate a `imageBuilder`
+    /// Instantiate an `ImageBuilder`
     ///
     /// This method borrows the `self` mutably to ensure only that one builder is active at a time which is a
     /// [basic limitation of wkhtmltoimage](https://github.com/wkhtmltoimage/wkhtmltoimage/issues/1711).
@@ -97,7 +97,7 @@ impl ImageFormat {
     }
 }
 
-/// High-level builder for generating images (initialized from `imageApplication`)
+/// High-level builder for generating images (initialized from `ImageApplication`)
 #[derive(Clone)]
 pub struct ImageBuilder {
     gs: HashMap<&'static str, Cow<'static, str>>,
@@ -159,10 +159,9 @@ impl ImageBuilder {
         self
     }
 
-    /// Set a global setting not explicitly supported by the imageBuilder
+    /// Set a global setting not explicitly supported by the ImageBuilder
     ///
-    /// Valid settings can be found here:
-    /// https://wkhtmltopdf.org/libwkhtmltox/pagesettings.html#pageImageGlobal
+    /// Valid settings can be found [here](https://wkhtmltopdf.org/libwkhtmltox/pagesettings.html#pageImageGlobal)
     ///
     /// # Safety
     ///
@@ -177,7 +176,7 @@ impl ImageBuilder {
         self
     }
 
-    /// Build a image using a URL as the source input
+    /// Build an image using a URL as the source input
     ///
     /// ## Example
     /// ```no_run
@@ -200,7 +199,7 @@ impl ImageBuilder {
         converter.convert()
     }
 
-    /// Build a image using the provided HTML from a local file
+    /// Build an image using the provided HTML from a local file
     ///
     /// ## Example
     /// ```no_run
@@ -248,7 +247,7 @@ impl ImageBuilder {
 }
 
 impl<'a> ImageOutput<'a> {
-    // Helper to save the image output to a local file
+    /// Save the image output to a local file
     pub fn save<P: AsRef<Path>>(&mut self, path: P) -> io::Result<File> {
         let mut file = File::create(path)?;
         let _ = io::copy(self, &mut file)?;
