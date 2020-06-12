@@ -23,7 +23,7 @@ enum WkhtmltoimageState {
     New,
     // Wkhtmltoimage backend is available for image generation
     Ready,
-    // Wkhtmltoimage backend is busy, so attempts to init a `imageGlobalSettings` instance will return `Error::Blocked`
+    // Wkhtmltoimage backend is busy, so attempts to init a `ImageGlobalSettings` instance will return `Error::Blocked`
     Busy,
     // Once dropped, wkthmltoimage cannot be used again for the life of this process
     Dropped,
@@ -72,7 +72,7 @@ pub struct ImageConverter {
 ///
 /// This function will only initialize wkhtmltoimage once per process which is a
 ///   [fundamental limitation of wkhtmltoimage](https://github.com/wkhtmltoimage/wkhtmltoimage/issues/1890).
-///   Calling [`imageApplication::new()`](../struct.imageApplication.html)
+///   Calling [`ImageApplication::new()`](../struct.ImageApplication.html)
 ///   has the same effect of initializing wkhtmltoimage.
 ///
 /// Subsequent attempts to initialize wkhtmltoimage will return `Error:IllegalInit`
@@ -98,7 +98,7 @@ pub fn image_init() -> Result<ImageGuard> {
 }
 
 impl ImageGlobalSettings {
-    /// Instantiate imageGlobalSettings
+    /// Instantiate ImageGlobalSettings
     ///
     /// This may only be called after `image_init` has successfully initialized wkhtmltoimage
     pub fn new() -> Result<ImageGlobalSettings> {
@@ -128,7 +128,11 @@ impl ImageGlobalSettings {
         }
     }
 
-    // Unsafe as it may cause undefined behavior (generally segfault) if name or value are not valid
+    /// Set a global setting for the wkhtmltoimage instance
+    ///
+    /// # Safety
+    ///
+    /// Unsafe as it may cause undefined behavior (generally segfault) if name or value are not valid
     pub unsafe fn set(&mut self, name: &str, value: &str) -> Result<()> {
         let c_name = CString::new(name).expect("setting name may not contain interior null bytes");
         let c_value =
@@ -146,9 +150,9 @@ impl ImageGlobalSettings {
         }
     }
 
+    /// call wkhtmltoimage_create_convert which consumes global_settings
+    ///   and thus we no longer need concern ourselves with deleting it
     pub fn create_converter(mut self) -> ImageConverter {
-        // call wkhtmltoimage_create_convert which consumes global_settings
-        //   and thus we no longer need concern ourselves with deleting it
         debug!("wkhtmltoimage_create_converter");
         let converter = unsafe { wkhtmltoimage_create_converter(self.global_settings, &0) };
         self.needs_delete = false;
@@ -164,8 +168,8 @@ impl ImageConverter {
     /// Performs the HTML to image conversion
     ///
     /// This method does not do any additional allocations of the output,
-    ///   so the `imageConverter` will be owned by `imageOutput` so that
-    ///   it is not dropped until the `imageOutput` is dropped.
+    ///   so the `ImageConverter` will be owned by `ImageOutput` so that
+    ///   it is not dropped until the `ImageOutput` is dropped.
     pub fn convert<'a>(self) -> Result<ImageOutput<'a>> {
         let rx = self.setup_callbacks();
         debug!("wkhtmltoimage_convert");
