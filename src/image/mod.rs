@@ -184,16 +184,16 @@ impl ImageBuilder {
     /// let mut image_app = ImageApplication::new().expect("Failed to init image application");
     /// let mut imageout = image_app.builder()
     ///        .format(ImageFormat::Png)
-    ///        .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap())
+    ///        .build_from_url(&"https://www.rust-lang.org/en-US/".parse().unwrap())
     ///        .expect("failed to build image");
     /// ```
     ///
     /// This method should be safe if using only safe builder methods, or if usage
     /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltoimage
-    pub fn build_from_url<'a, 'b>(&'a mut self, url: Url) -> Result<ImageOutput<'b>> {
+    pub fn build_from_url<'a, 'b>(&'a mut self, url: &Url) -> Result<ImageOutput<'b>> {
         let mut global = self.global_settings()?;
         unsafe {
-            global.set("in", url.as_str())?;
+            global.set("in", &*url.as_str())?;
         }
         let converter = global.create_converter();
         converter.convert()

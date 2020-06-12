@@ -47,7 +47,7 @@ mod tests {
             let res = image_app
                 .builder()
                 .format(Png)
-                .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap());
+                .build_from_url(&"https://www.rust-lang.org/en-US/".parse().unwrap());
             assert!(res.is_ok(), "{}", res.unwrap_err());
         }
 
