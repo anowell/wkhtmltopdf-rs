@@ -9,6 +9,7 @@ pub use pdf::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ImageFormat::Png;
 
     #[test]
     fn one_test_to_rule_them_all() {
@@ -36,8 +37,8 @@ mod tests {
             // Test building image from file
             let res = image_app
                 .builder()
-                .format("png")
-                .build_from_path("/home/david/gits/wkhtmltopdf-rs-sciguy16/examples/input.html");
+                .format(Png)
+                .build_from_path("examples/input.html");
             assert!(res.is_ok(), "{}", res.unwrap_err());
         }
 
@@ -45,7 +46,7 @@ mod tests {
             // Test building image from URL
             let res = image_app
                 .builder()
-                .format("png")
+                .format(Png)
                 .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap());
             assert!(res.is_ok(), "{}", res.unwrap_err());
         }

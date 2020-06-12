@@ -11,7 +11,7 @@
 //!
 //! let image_app = ImageApplication::new().expect("Failed to init image application");
 //! let mut imageout = image_app.builder()
-//!     .format("png")
+//!     .format(ImageFormat::Png)
 //!     .build_from_path("input.html")
 //!     .expect("failed to build image");
 //!
@@ -76,6 +76,27 @@ impl ImageApplication {
     }
 }
 
+/// Image formats supported by wkhtmltoimage
+pub enum ImageFormat {
+    Jpg,
+    Png,
+    Bmp,
+    Svg,
+}
+
+impl ImageFormat {
+    /// Render the image format as a string to pass to wkhtmltoimage
+    fn value(&self) -> &'static str {
+        use ImageFormat::*;
+        match self {
+            Jpg => "jpg",
+            Png => "png",
+            Bmp => "bmp",
+            Svg => "svg",
+        }
+    }
+}
+
 /// High-level builder for generating images (initialized from `imageApplication`)
 #[derive(Clone)]
 pub struct ImageBuilder {
@@ -132,11 +153,9 @@ impl ImageBuilder {
         self
     }
 
-    /// The output format to use, must be either "", "jpg", "png", "bmp" or "svg"
-    pub fn format(&mut self, format: &str) -> &mut ImageBuilder {
-        if ["", "jpg", "png", "bmp", "svg"].contains(&format) {
-            self.gs.insert("fmt", format.to_string().into());
-        }
+    /// The output format to use, valid formats are Jpg, Png, Bmp, and Svg
+    pub fn format(&mut self, format: ImageFormat) -> &mut ImageBuilder {
+        self.gs.insert("fmt", format.value().into());
         self
     }
 
@@ -162,10 +181,10 @@ impl ImageBuilder {
     ///
     /// ## Example
     /// ```no_run
-    /// # use wkhtmltopdf::ImageApplication;
+    /// # use wkhtmltopdf::{ImageApplication, ImageFormat};
     /// let mut image_app = ImageApplication::new().expect("Failed to init image application");
     /// let mut imageout = image_app.builder()
-    ///        .format("png")
+    ///        .format(ImageFormat::Png)
     ///        .build_from_url("https://www.rust-lang.org/en-US/".parse().unwrap())
     ///        .expect("failed to build image");
     /// ```
@@ -185,10 +204,10 @@ impl ImageBuilder {
     ///
     /// ## Example
     /// ```no_run
-    /// # use wkhtmltopdf::ImageApplication;
+    /// # use wkhtmltopdf::{ImageApplication, ImageFormat};
     /// let mut image_app = ImageApplication::new().expect("Failed to init image application");
     /// let mut imageout = image_app.builder()
-    ///        .format("png")
+    ///        .format(ImageFormat::Png)
     ///        .build_from_path("/path/to/static/index.html")
     ///        .expect("failed to build image");
     /// ```
