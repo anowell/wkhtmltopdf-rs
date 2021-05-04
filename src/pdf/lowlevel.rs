@@ -38,7 +38,8 @@ lazy_static! {
     // The HashMap key is the converter's raw pointer cast as usize, so we can have unique callbacks per converter
     static ref FINISHED_CALLBACKS: Mutex<HashMap<usize, Box<dyn FnMut(i32) + 'static + Send>>> = Mutex::new(HashMap::new());
     static ref ERROR_CALLBACKS: Mutex<HashMap<usize, Box<dyn FnMut(String) + 'static + Send>>> = Mutex::new(HashMap::new());
-    // TODO: 3 more callback types
+    static ref WARNING_CALLBACKS: Mutex<HashMap<usize, Box<dyn FnMut(String) + 'static + Send>>> = Mutex::new(HashMap::new());
+    // TODO: 2 more callback types
 }
 
 /// Handles initialization and deinitialization of wkhtmltopdf
@@ -73,6 +74,7 @@ pub struct PdfConverter {
     converter: *mut wkhtmltopdf_converter,
     // PdfGlobalSettings::drop also manages wkhtmktopdf_deinit, take ownership to delay drop
     _global: PdfGlobalSettings,
+    warning_callback: Arc<Mutex<Option<Box<dyn FnMut(String) + 'static + Send>>>>
 }
 
 /// Initializes wkhtmltopdf
@@ -163,6 +165,7 @@ impl PdfGlobalSettings {
         PdfConverter {
             converter,
             _global: self,
+            warning_callback: Arc::new(Mutex::new(None))
         }
     }
 }
@@ -200,6 +203,11 @@ impl PdfConverter {
         pdf_object.needs_delete = false;
     }
 
+    pub fn set_warning_callback(&mut self, on_warning: Option<Box<dyn FnMut(String) + 'static + Send>>) {
+        let mut warning_callback = self.warning_callback.lock().expect("failed acquiring lock");
+        *warning_callback = on_warning;
+    }
+
     /// Performs the HTML to PDF conversion
     ///
     /// This method does not do any additional allocations of the output,
@@ -233,6 +241,7 @@ impl PdfConverter {
     fn remove_callbacks(&self) {
         let id = self.converter as usize;
 
+        let _ = WARNING_CALLBACKS.lock().unwrap().remove(&id);
         let _ = ERROR_CALLBACKS.lock().unwrap().remove(&id);
         let _ = FINISHED_CALLBACKS.lock().unwrap().remove(&id);
     }
@@ -240,22 +249,31 @@ impl PdfConverter {
     fn setup_callbacks(&self) -> mpsc::Receiver<Result<()>> {
         let (tx, rx) = mpsc::channel();
         let errors = Arc::new(Mutex::new(Vec::new()));
-
+        
         let tx_finished = tx;
         let errors_finished = errors.clone();
         let on_finished = move |i| {
             let errors = errors_finished.lock().unwrap();
-
+            
             let res = match i {
                 1 => Ok(()),
                 _ => Err(Error::ConversionFailed(errors.join(", "))),
             };
             let _ = tx_finished.send(res);
         };
-
+        
         let on_error = move |err| {
             let mut errors = errors.lock().unwrap();
             errors.push(err);
+        };
+        
+        let warning_cb = self.warning_callback.clone();
+        let on_warning = move |warn| {
+            let mut cb = warning_cb.lock().unwrap();
+            if cb.is_some() {
+                let cb = cb.as_mut().unwrap();
+                cb(warn);
+            }
         };
 
         // Insert into our lazy static callbacks
@@ -265,6 +283,8 @@ impl PdfConverter {
             finished_callbacks.insert(id, Box::new(on_finished));
             let mut error_callbacks = ERROR_CALLBACKS.lock().unwrap();
             error_callbacks.insert(id, Box::new(on_error));
+            let mut warning_callbacks = WARNING_CALLBACKS.lock().unwrap();
+            warning_callbacks.insert(id, Box::new(on_warning));
         }
 
         unsafe {
@@ -272,9 +292,12 @@ impl PdfConverter {
             wkhtmltopdf_set_finished_callback(self.converter, Some(finished_callback));
             debug!("wkhtmltopdf_set_error_callback");
             wkhtmltopdf_set_error_callback(self.converter, Some(error_callback));
-            // wkhtmltopdf_set_progress_changed_callback(self.converter, Some(progress_changed));
-            // wkhtmltopdf_set_phase_changed_callback(self.converter, Some(phase_changed));
-            // wkhtmltopdf_set_warning_callback(self.converter, Some(warning_cb));
+            debug!("wkhtmltopdf_set_warning_callback");
+            wkhtmltopdf_set_warning_callback(self.converter, Some(warning_callback));
+            // debug!("wkhtmltopdf_set_progress_changed_callback");
+            // wkhtmltopdf_set_progress_changed_callback(self.converter, Some(progress_changed_callback));
+            // debug!("wkhtmltopdf_set_phase_changed_callback");
+            // wkhtmltopdf_set_phase_changed_callback(self.converter, Some(phase_changed_callback));
         }
 
         rx
@@ -380,16 +403,22 @@ unsafe extern "C" fn error_callback(converter: *mut wkhtmltopdf_converter, msg_p
     }
 }
 
-// unsafe extern fn warning_cb(_converter: *mut wkhtmltopdf_converter, msg_ptr: *const c_char) {
-//     let msg = CStr::from_ptr(msg_ptr).to_string_lossy();
-//     println!("Warning: {}", msg);
+unsafe extern fn warning_callback(converter: *mut wkhtmltopdf_converter, msg_ptr: *const c_char) {
+    let cstr = CStr::from_ptr(msg_ptr);
+    let mut callbacks = WARNING_CALLBACKS.lock().unwrap();
+    let id = converter as usize;
+    let msg = cstr.to_string_lossy().into_owned();
+    match callbacks.get_mut(&id) {
+        Some(cb) => cb(msg),
+        None => println!("No callback for warning: {}", msg),
+    }
+}
+
+// unsafe extern fn progress_changed_callback(_converter: *mut wkhtmltopdf_converter, val: c_int) {
+//     println!("Progress: {:3}", val);
 // }
 
-// unsafe extern fn progress_changed(_converter: *mut wkhtmltopdf_converter, val: c_int) {
-//     println!("{:3}", val);
-// }
-
-// unsafe extern fn phase_changed(converter: *mut wkhtmltopdf_converter) {
+// unsafe extern fn phase_changed_callback(converter: *mut wkhtmltopdf_converter) {
 //     let phase = wkhtmltopdf_current_phase(converter);
 //     let desc = wkhtmltopdf_phase_description(converter, phase);
 // 	println!("Phase: {}", CStr::from_ptr(desc).to_string_lossy());
