@@ -6,13 +6,14 @@
 //! It is recommended to use the [`PdfBuilder`](../struct.PdfBuilder.html) build methods which manage all of these details,
 //! however, some usage scenarios (e.g. adding multiple objects to your PDF) may require
 //! using this lower-level module to achieve sufficient control.
+use lazy_static::lazy_static;
+use log::{debug, error, warn};
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::os::raw::{c_char, c_int};
 use std::sync::{mpsc, Arc, Mutex};
 use std::{ptr, slice};
-use thread_id;
 use wkhtmltox_sys::pdf::*;
 
 use super::{Error, PdfOutput, Result};
