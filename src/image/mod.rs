@@ -250,12 +250,15 @@ impl ImageBuilder {
     ///
     /// This method should be safe if using only safe builder methods, or if usage
     /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltoimage
-    pub fn build_from_html<'a, 'b>(&'a mut self, html: &str) -> Result<ImageOutput<'b>> {
+    pub fn build_from_html<'a, 'b, S: AsRef<str>>(
+        &'a mut self,
+        html: S,
+    ) -> Result<ImageOutput<'b>> {
         let mut global = self.global_settings()?;
         unsafe {
             global.set("in", "-")?;
         }
-        let converter = global.create_converter_with_html(html);
+        let converter = global.create_converter_with_html(html.as_ref());
         converter.convert()
     }
 
