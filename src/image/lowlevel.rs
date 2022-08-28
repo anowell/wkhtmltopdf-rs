@@ -152,25 +152,14 @@ impl ImageGlobalSettings {
 
     /// calls wkhtmltoimage_create_converter which consumes global_settings
     ///   and thus we no longer need concern ourselves with deleting it
-    pub fn create_converter(mut self) -> ImageConverter {
+    pub fn create_converter(mut self, data: Option<&str>) -> ImageConverter {
         debug!("wkhtmltoimage_create_converter");
-        let converter = unsafe { wkhtmltoimage_create_converter(self.global_settings, &0) };
-        self.needs_delete = false;
-
-        ImageConverter {
-            converter,
-            _global: self,
-        }
-    }
-
-    /// calls wkhtmltoimage_create_converter which consumes global_settings
-    ///   and thus we no longer need concern ourselves with deleting it
-    pub fn create_converter_with_html(mut self, html: &str) -> ImageConverter {
-        debug!("wkhtmltoimage_create_converter");
-        let c_html = CString::new(html).expect("html may not contain interior null bytes");
-
+        let c_data = match data {
+            None => CString::default(),
+            Some(d) => CString::new(d).expect("data may not contain interior null bytes"),
+        };
         let converter =
-            unsafe { wkhtmltoimage_create_converter(self.global_settings, c_html.as_ptr()) };
+            unsafe { wkhtmltoimage_create_converter(self.global_settings, c_data.as_ptr()) };
         self.needs_delete = false;
 
         ImageConverter {

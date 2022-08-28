@@ -195,7 +195,7 @@ impl ImageBuilder {
         unsafe {
             global.set("in", &*url.as_str())?;
         }
-        let converter = global.create_converter();
+        let converter = global.create_converter(None);
         converter.convert()
     }
 
@@ -232,7 +232,7 @@ impl ImageBuilder {
         unsafe {
             global.set("in", &path.to_string_lossy())?;
         }
-        let converter = global.create_converter();
+        let converter = global.create_converter(None);
         converter.convert()
     }
 
@@ -258,7 +258,7 @@ impl ImageBuilder {
         unsafe {
             global.set("in", "-")?;
         }
-        let converter = global.create_converter_with_html(html.as_ref());
+        let converter = global.create_converter(Some(html.as_ref()));
         converter.convert()
     }
 
