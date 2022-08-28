@@ -51,6 +51,15 @@ mod tests {
             assert!(res.is_ok(), "{}", res.unwrap_err());
         }
 
+        {
+            // Test building image from HTML string
+            let res = image_app
+                .builder()
+                .format(Png)
+                .build_from_html("basic <b>from</b> html");
+            assert!(res.is_ok(), "{}", res.unwrap_err());
+        }
+
         /*{ // Pending https://github.com/wkhtmltopdf/wkhtmltopdf/issues/4714
             // Test cropping options
             let res = image_app

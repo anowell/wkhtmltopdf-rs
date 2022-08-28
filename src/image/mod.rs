@@ -236,6 +236,29 @@ impl ImageBuilder {
         converter.convert()
     }
 
+    /// Build an image using the provided HTML string
+    ///
+    /// ## Example
+    /// ```no_run
+    /// # use wkhtmltopdf::{ImageApplication, ImageFormat};
+    /// let mut image_app = ImageApplication::new().expect("Failed to init image application");
+    /// let mut imageout = image_app.builder()
+    ///         .format(ImageFormat::Png)
+    ///         .build_from_html("<h1>Hello World!</h1>")
+    ///         .expect("failed to build image");
+    /// ```
+    ///
+    /// This method should be safe if using only safe builder methods, or if usage
+    /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltoimage
+    pub fn build_from_html<'a, 'b>(&'a mut self, html: &str) -> Result<ImageOutput<'b>> {
+        let mut global = self.global_settings()?;
+        unsafe {
+            global.set("in", "-")?;
+        }
+        let converter = global.create_converter_with_html(html);
+        converter.convert()
+    }
+
     /// Use the relevant settings to construct a low-level instance of `ImageGlobalSettings`
     pub fn global_settings(&self) -> Result<ImageGlobalSettings> {
         let mut global = ImageGlobalSettings::new()?;
