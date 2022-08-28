@@ -23,6 +23,7 @@
 //!
 //! - [`build_from_url`](struct.ImageBuilder.html#method.build_from_url)
 //! - [`build_from_path`](struct.ImageBuilder.html#method.build_from_path)
+//! - [`build_from_html`](struct.ImageBuilder.html#method.build_from_html)
 //!
 //! Addtionally, the [`lowlevel`](lowlevel/index.html) module provides safe abstractions
 //!   that allow full configuration of wkhtmltoimage.
