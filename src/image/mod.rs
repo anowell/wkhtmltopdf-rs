@@ -23,6 +23,7 @@
 //!
 //! - [`build_from_url`](struct.ImageBuilder.html#method.build_from_url)
 //! - [`build_from_path`](struct.ImageBuilder.html#method.build_from_path)
+//! - [`build_from_html`](struct.ImageBuilder.html#method.build_from_html)
 //!
 //! Addtionally, the [`lowlevel`](lowlevel/index.html) module provides safe abstractions
 //!   that allow full configuration of wkhtmltoimage.
@@ -195,7 +196,7 @@ impl ImageBuilder {
         unsafe {
             global.set("in", &*url.as_str())?;
         }
-        let converter = global.create_converter();
+        let converter = global.create_converter(None);
         converter.convert()
     }
 
@@ -232,7 +233,33 @@ impl ImageBuilder {
         unsafe {
             global.set("in", &path.to_string_lossy())?;
         }
-        let converter = global.create_converter();
+        let converter = global.create_converter(None);
+        converter.convert()
+    }
+
+    /// Build an image using the provided HTML string
+    ///
+    /// ## Example
+    /// ```no_run
+    /// # use wkhtmltopdf::{ImageApplication, ImageFormat};
+    /// let mut image_app = ImageApplication::new().expect("Failed to init image application");
+    /// let mut imageout = image_app.builder()
+    ///         .format(ImageFormat::Png)
+    ///         .build_from_html("<h1>Hello World!</h1>")
+    ///         .expect("failed to build image");
+    /// ```
+    ///
+    /// This method should be safe if using only safe builder methods, or if usage
+    /// of `unsafe` methods (e.g. adding custom settings) is properly handled by wkhtmltoimage
+    pub fn build_from_html<'a, 'b, S: AsRef<str>>(
+        &'a mut self,
+        html: S,
+    ) -> Result<ImageOutput<'b>> {
+        let mut global = self.global_settings()?;
+        unsafe {
+            global.set("in", "-")?;
+        }
+        let converter = global.create_converter(Some(html.as_ref()));
         converter.convert()
     }
 
