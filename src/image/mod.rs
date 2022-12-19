@@ -70,7 +70,7 @@ impl ImageApplication {
     /// Instantiate an `ImageBuilder`
     ///
     /// This method borrows the `self` mutably to ensure only that one builder is active at a time which is a
-    /// [basic limitation of wkhtmltoimage](https://github.com/wkhtmltoimage/wkhtmltoimage/issues/1711).
+    /// [basic limitation of wkhtmltoimage](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1711).
     /// Parallel execution is currently only possible by spawning multiple processes.
     pub fn builder(&self) -> ImageBuilder {
         ImageBuilder { gs: HashMap::new() }

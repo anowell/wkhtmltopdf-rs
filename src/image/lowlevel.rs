@@ -44,7 +44,7 @@ lazy_static! {
 /// Handles initialization and deinitialization of wkhtmltoimage
 ///
 /// This struct may only be initialized once per process which is a
-/// which is [basic limitation of wkhtmltoimage](https://github.com/wkhtmltoimage/wkhtmltoimage/issues/1890).
+/// which is [basic limitation of wkhtmltoimage](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).
 ///
 /// When it goes out of scope, wkhtmltoimage will be deinitialized
 /// and further image generation will not be possible.
@@ -71,7 +71,7 @@ pub struct ImageConverter {
 /// Initializes wkhtmltoimage
 ///
 /// This function will only initialize wkhtmltoimage once per process which is a
-///   [fundamental limitation of wkhtmltoimage](https://github.com/wkhtmltoimage/wkhtmltoimage/issues/1890).
+///   [fundamental limitation of wkhtmltoimage](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1890).
 ///   Calling [`ImageApplication::new()`](../struct.ImageApplication.html)
 ///   has the same effect of initializing wkhtmltoimage.
 ///
