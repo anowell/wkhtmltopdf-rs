@@ -2,7 +2,7 @@ use wkhtmltopdf::*;
 
 fn main() {
     env_logger::init();
-    let image_app = ImageApplication::new().expect("Failed to init image application");
+    let mut image_app = ImageApplication::new().expect("Failed to init image application");
 
     {
         let mut out = image_app

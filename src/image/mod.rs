@@ -9,7 +9,7 @@
 //! ```no_run
 //! use wkhtmltopdf::*;
 //!
-//! let image_app = ImageApplication::new().expect("Failed to init image application");
+//! let mut image_app = ImageApplication::new().expect("Failed to init image application");
 //! let mut imageout = image_app.builder()
 //!     .format(ImageFormat::Png)
 //!     .build_from_path("input.html")
@@ -72,7 +72,7 @@ impl ImageApplication {
     /// This method borrows the `self` mutably to ensure only that one builder is active at a time which is a
     /// [basic limitation of wkhtmltoimage](https://github.com/wkhtmltoimage/wkhtmltoimage/issues/1711).
     /// Parallel execution is currently only possible by spawning multiple processes.
-    pub fn builder(&self) -> ImageBuilder {
+    pub fn builder(&mut self) -> ImageBuilder {
         ImageBuilder { gs: HashMap::new() }
     }
 }
@@ -194,7 +194,7 @@ impl ImageBuilder {
     pub fn build_from_url<'a, 'b>(&'a mut self, url: &Url) -> Result<ImageOutput<'b>> {
         let mut global = self.global_settings()?;
         unsafe {
-            global.set("in", &*url.as_str())?;
+            global.set("in", url.as_str())?;
         }
         let converter = global.create_converter(None);
         converter.convert()
@@ -266,8 +266,8 @@ impl ImageBuilder {
     /// Use the relevant settings to construct a low-level instance of `ImageGlobalSettings`
     pub fn global_settings(&self) -> Result<ImageGlobalSettings> {
         let mut global = ImageGlobalSettings::new()?;
-        for (ref name, ref val) in &self.gs {
-            unsafe { global.set(name, &val) }?;
+        for (name, val) in &self.gs {
+            unsafe { global.set(name, val) }?;
         }
         Ok(global)
     }

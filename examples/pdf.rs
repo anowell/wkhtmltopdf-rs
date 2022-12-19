@@ -1,10 +1,8 @@
-use env_logger;
-
 use wkhtmltopdf::*;
 
 fn main() {
     env_logger::init();
-    let pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+    let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
 
     let html = r#"
       <html><body>
@@ -26,9 +24,7 @@ fn main() {
         .title("Rust Website");
 
     {
-        let mut pdfout1 = builder1
-            .build_from_html(&html)
-            .expect("failed to build pdf");
+        let mut pdfout1 = builder1.build_from_html(html).expect("failed to build pdf");
 
         let _ = pdfout1.save("basic.pdf").expect("failed to save basic.pdf");
         println!("PDF saved as basic.pdf");

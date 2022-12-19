@@ -391,7 +391,7 @@ unsafe extern "C" fn finished_callback(converter: *mut wkhtmltopdf_converter, va
         // call and remove this converter's FINISHED_CALLBACK
         let mut callbacks = FINISHED_CALLBACKS.lock().unwrap();
         if let Some(mut cb) = callbacks.remove(&id) {
-            cb(val as i32);
+            cb(val);
         }
     }
 }
