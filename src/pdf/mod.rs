@@ -10,7 +10,7 @@
 //! use wkhtmltopdf::*;
 //!
 //! let html = r#"<html><body><div>foo</div></body></html>"#;
-//! let pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+//! let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
 //! let mut pdfout = pdf_app.builder()
 //!     .orientation(Orientation::Landscape)
 //!     .margin(Size::Inches(2))
@@ -182,7 +182,7 @@ impl PdfApplication {
     /// This method borrows the `self` mutably to ensure only that one builder is active at a time which is a
     /// [basic limitation of wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf/issues/1711).
     /// Parallel execution is currently only possible by spawning multiple processes.
-    pub fn builder(&self) -> PdfBuilder {
+    pub fn builder(&mut self) -> PdfBuilder {
         PdfBuilder {
             gs: HashMap::new(),
             os: HashMap::new(),

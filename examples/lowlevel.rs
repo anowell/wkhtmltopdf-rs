@@ -5,7 +5,7 @@ use wkhtmltopdf::*;
 
 fn main() {
     env_logger::init();
-    let pdf_app = PdfApplication::new().expect("Failed to init PDF application");
+    let mut pdf_app = PdfApplication::new().expect("Failed to init PDF application");
 
     let html = r#"
         <html><body>

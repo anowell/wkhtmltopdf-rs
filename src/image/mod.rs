@@ -9,7 +9,7 @@
 //! ```no_run
 //! use wkhtmltopdf::*;
 //!
-//! let image_app = ImageApplication::new().expect("Failed to init image application");
+//! let mut image_app = ImageApplication::new().expect("Failed to init image application");
 //! let mut imageout = image_app.builder()
 //!     .format(ImageFormat::Png)
 //!     .build_from_path("input.html")
@@ -72,7 +72,7 @@ impl ImageApplication {
     /// This method borrows the `self` mutably to ensure only that one builder is active at a time which is a
     /// [basic limitation of wkhtmltoimage](https://github.com/wkhtmltoimage/wkhtmltoimage/issues/1711).
     /// Parallel execution is currently only possible by spawning multiple processes.
-    pub fn builder(&self) -> ImageBuilder {
+    pub fn builder(&mut self) -> ImageBuilder {
         ImageBuilder { gs: HashMap::new() }
     }
 }
