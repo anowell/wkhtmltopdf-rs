@@ -1,4 +1,4 @@
-//! Generate images from HTML safely using [wkhtmltopdf](http://wkhtmltopdf.org/)
+//! Generate images from HTML safely using [wkhtmltopdf](https://wkhtmltopdf.org/)
 //!
 //! Wkhtmltoimage uses QT Webkit to render HTML for image generation.
 //! This crate depends on [low-level wkhtmltoimage bindings](https://crates.io/crates/wkhtmltox-sys),
