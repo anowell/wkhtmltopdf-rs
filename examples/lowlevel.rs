@@ -1,4 +1,4 @@
-use env_logger;
+
 use std::fs::File;
 use wkhtmltopdf::Orientation;
 use wkhtmltopdf::*;
@@ -45,7 +45,7 @@ fn main() {
     })));
 
     // Add an html object and convert
-    c.add_html_object(os, &html);
+    c.add_html_object(os, html);
     let mut pdfout = c.convert().expect("failed to convert");
 
     // let mut pdfout = pdfout;

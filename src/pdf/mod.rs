@@ -371,8 +371,8 @@ impl PdfBuilder {
     /// Use the relevant settings to construct a low-level instance of `PdfGlobalSettings`
     pub fn global_settings(&self) -> Result<PdfGlobalSettings> {
         let mut global = PdfGlobalSettings::new()?;
-        for (ref name, ref val) in &self.gs {
-            unsafe { global.set(name, &val) }?;
+        for (name, val) in &self.gs {
+            unsafe { global.set(name, val) }?;
         }
         Ok(global)
     }
@@ -380,8 +380,8 @@ impl PdfBuilder {
     /// Use the relevant settings to construct a low-level instance of `PdfObjectSettings`
     pub fn object_settings(&self) -> Result<PdfObjectSettings> {
         let mut object = PdfObjectSettings::new();
-        for (ref name, ref val) in &self.os {
-            unsafe { object.set(name, &val) }?;
+        for (name, val) in &self.os {
+            unsafe { object.set(name, val) }?;
         }
         Ok(object)
     }

@@ -1,4 +1,4 @@
-use env_logger;
+
 
 use wkhtmltopdf::*;
 
@@ -27,7 +27,7 @@ fn main() {
 
     {
         let mut pdfout1 = builder1
-            .build_from_html(&html)
+            .build_from_html(html)
             .expect("failed to build pdf");
 
         let _ = pdfout1.save("basic.pdf").expect("failed to save basic.pdf");

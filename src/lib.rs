@@ -14,7 +14,7 @@ mod tests {
     #[test]
     fn one_test_to_rule_them_all() {
         // Has to be a single test because PdfApplication can only be initialized once and is !Sync/!Send
-        let _ = env_logger::init();
+        env_logger::init();
         let mut pdf_app = PdfApplication::new().expect("Failed to init PDF Application");
 
         {

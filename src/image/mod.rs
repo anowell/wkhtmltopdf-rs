@@ -194,7 +194,7 @@ impl ImageBuilder {
     pub fn build_from_url<'a, 'b>(&'a mut self, url: &Url) -> Result<ImageOutput<'b>> {
         let mut global = self.global_settings()?;
         unsafe {
-            global.set("in", &*url.as_str())?;
+            global.set("in", url.as_str())?;
         }
         let converter = global.create_converter(None);
         converter.convert()
@@ -266,8 +266,8 @@ impl ImageBuilder {
     /// Use the relevant settings to construct a low-level instance of `ImageGlobalSettings`
     pub fn global_settings(&self) -> Result<ImageGlobalSettings> {
         let mut global = ImageGlobalSettings::new()?;
-        for (ref name, ref val) in &self.gs {
-            unsafe { global.set(name, &val) }?;
+        for (name, val) in &self.gs {
+            unsafe { global.set(name, val) }?;
         }
         Ok(global)
     }
