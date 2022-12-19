@@ -5,7 +5,7 @@ Resource  | Link
 ----- | -----
 Crate | [![Crates.io](https://img.shields.io/crates/v/wkhtmltopdf.svg?maxAge=2592000)](https://crates.io/crates/wkhtmltopdf)
 Documentation | [Cargo docs](https://anowell.github.io/wkhtmltopdf-rs/wkhtmltopdf/)
-Upstream | [wkhtmltopdf.org](http://wkhtmltopdf.org/)
+Upstream | [wkhtmltopdf.org](https://wkhtmltopdf.org/)
 
 -----
 
@@ -22,7 +22,7 @@ you will need to spawn/fork processes to do so. Such an abstraction would be a w
 
 ## Install
 
-Install [wkhtmltopdf](http://wkhtmltopdf.org/downloads.html) 0.12.3.
+Install [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) 0.12.3.
 
 Note: This library using the `libs` (shared objects) and `includes` (headers)
   for PDF generation instead of the wkhtmltopdf executable.

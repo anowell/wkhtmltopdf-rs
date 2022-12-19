@@ -1,4 +1,4 @@
-//! Generate PDFs from HTML safely using [wkhtmltopdf](http://wkhtmltopdf.org/)
+//! Generate PDFs from HTML safely using [wkhtmltopdf](https://wkhtmltopdf.org/)
 //!
 //! Wkhtmltopdf uses QT Webkit to render HTML for PDF generation.
 //! This crate depends on [low-level wkhtmltopdf bindings](https://crates.io/crates/wkhtmltox-sys),
