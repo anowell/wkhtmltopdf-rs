@@ -1,5 +1,3 @@
-
-
 use wkhtmltopdf::*;
 
 fn main() {
@@ -26,9 +24,7 @@ fn main() {
         .title("Rust Website");
 
     {
-        let mut pdfout1 = builder1
-            .build_from_html(html)
-            .expect("failed to build pdf");
+        let mut pdfout1 = builder1.build_from_html(html).expect("failed to build pdf");
 
         let _ = pdfout1.save("basic.pdf").expect("failed to save basic.pdf");
         println!("PDF saved as basic.pdf");
